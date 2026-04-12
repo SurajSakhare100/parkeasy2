@@ -90,12 +90,12 @@ export default function UserHomeScreen() {
             onPress={() => handleMarkerPress(parking)}
           >
             <View style={[
-              styles.customMarker, 
+              styles.customMarker,
               selectedParking?._id === parking._id && styles.selectedMarker
             ]}>
-              <Image 
-                source={require('../assets/parkicon.png')} 
-                style={styles.markerIcon} 
+              <Image
+                source={require('../assets/parkMarker.png')}
+                style={styles.markerIcon}
               />
               <View style={styles.pinPrice}>
                 <Text style={styles.pinPriceText}>₹{parking.pricePerHour}</Text>
@@ -108,7 +108,7 @@ export default function UserHomeScreen() {
       {/* Semi-transparent overlay to make elements pop */}
       <View style={styles.mapOverlay} pointerEvents="none" />
 
-      <SafeAreaView style={styles.safeArea}>
+      <SafeAreaView style={styles.safeArea} pointerEvents="box-none">
         {/* Top Header Section */}
         <View style={styles.header}>
           <View style={styles.locationRow}>
@@ -128,8 +128,8 @@ export default function UserHomeScreen() {
 
           {/* Search Bar */}
           <View style={styles.searchContainer}>
-            <TouchableOpacity 
-              style={styles.searchInputMock} 
+            <TouchableOpacity
+              style={styles.searchInputMock}
               onPress={() => navigation.navigate('Search')}
               activeOpacity={0.8}
             >
@@ -145,14 +145,14 @@ export default function UserHomeScreen() {
         {/* Bottom Card Area */}
         {selectedParking && (
           <View style={styles.bottomCardContainer}>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.parkingCard}
               activeOpacity={0.9}
               onPress={() => navigation.navigate('ParkingDetails', { parking: selectedParking })}
             >
-              <Image 
-                source={{ uri: 'https://images.unsplash.com/photo-1590674899484-13da0d1b58f5?w=400&fit=crop' }} 
-                style={styles.parkingImage} 
+              <Image
+                source={{ uri: 'https://images.unsplash.com/photo-1590674899484-13da0d1b58f5?w=400&fit=crop' }}
+                style={styles.parkingImage}
               />
               <View style={styles.cardHeader}>
                 <View style={{ flex: 1 }}>
@@ -176,8 +176,8 @@ export default function UserHomeScreen() {
                   <TouchableOpacity style={styles.bookmarkBtn}>
                     <Ionicons name="bookmark-outline" size={22} color={COLORS.primary} />
                   </TouchableOpacity>
-                  <TouchableOpacity 
-                    style={styles.bookBtn} 
+                  <TouchableOpacity
+                    style={styles.bookBtn}
                     onPress={() => navigation.navigate('ParkingDetails', { parking: selectedParking })}
                   >
                     <Text style={styles.bookBtnText}>Book Now</Text>
@@ -190,9 +190,9 @@ export default function UserHomeScreen() {
 
       </SafeAreaView>
 
-      <FilterModal 
-        visible={filterVisible} 
-        onClose={() => setFilterVisible(false)} 
+      <FilterModal
+        visible={filterVisible}
+        onClose={() => setFilterVisible(false)}
         onApply={(filters) => {
           console.log("Applied Filters:", filters);
           // In a real app we'd dispatch filtering logic here!
@@ -391,7 +391,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   selectedMarker: {
-    transform: [{ scale: 1.2 }],
+    transform: [{ scale: 1 }],
     zIndex: 99,
   }
 });

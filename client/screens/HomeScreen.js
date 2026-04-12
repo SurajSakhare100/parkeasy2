@@ -123,7 +123,7 @@ const styles = StyleSheet.create({
   },
   bottomNavContainer: {
     position: 'absolute',
-    bottom: Platform.OS === 'ios' ? 35 : 20,
+    bottom: 20,
     left: 0,
     right: 0,
     alignItems: 'center',

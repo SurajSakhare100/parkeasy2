@@ -59,7 +59,7 @@ export default function RegisterScreen({ navigation }) {
               <Image
                 source={require('../assets/parkicon.png')}
                 style={styles.logo}
-                resizeMode="contain"
+                resizeMode="cover"
               />
             </View>
             <Text style={styles.brandName}>ParkEasy</Text>

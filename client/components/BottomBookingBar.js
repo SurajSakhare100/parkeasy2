@@ -40,7 +40,7 @@ const styles = StyleSheet.create({
     width: '100%',
     backgroundColor: '#FFF',
     paddingTop: 14,
-    paddingBottom: Platform.OS === 'ios' ? 34 : 100,
+    paddingBottom: 100,
     paddingHorizontal: 20,
     borderTopWidth: 1,
     borderTopColor: '#EFEFEF',

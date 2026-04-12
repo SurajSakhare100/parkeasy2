@@ -440,7 +440,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingTop: 14,
-    paddingBottom: Platform.OS === 'ios' ? 34 : 20,
+    paddingBottom: 20,
     borderTopWidth: 1,
     borderTopColor: '#EEE',
     ...SHADOWS.medium,

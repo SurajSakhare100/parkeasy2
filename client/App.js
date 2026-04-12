@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { View, ActivityIndicator } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import LoginScreen from './screens/LoginScreen';
@@ -48,46 +49,48 @@ export default function App() {
   }
 
   return (
-    <NavigationContainer>
-      <Stack.Navigator initialRouteName={initialRoute}>
-        <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
-        <Stack.Screen name="Register" component={RegisterScreen} options={{ headerShown: false }} />
-        <Stack.Screen 
-          name="Home" 
-          component={HomeScreen} 
-          options={{ title: 'Dashboard', headerShown: false }}
-        />
-        <Stack.Screen 
-          name="Search" 
-          component={SearchScreen} 
-          options={{ headerShown: false, animation: 'fade' }} 
-        />
-        <Stack.Screen 
-          name="ParkingDetails" 
-          component={ParkingDetailsScreen} 
-          options={{ headerShown: false }} 
-        />
-        <Stack.Screen 
-          name="Booking" 
-          component={BookingScreen} 
-          options={{ headerShown: false, animation: 'slide_from_bottom' }} 
-        />
-        <Stack.Screen 
-          name="Payment" 
-          component={PaymentScreen} 
-          options={{ headerShown: false, animation: 'slide_from_right' }} 
-        />
-        <Stack.Screen 
-          name="Ticket" 
-          component={TicketScreen} 
-          options={{ headerShown: false, animation: 'fade', gestureEnabled: false }} 
-        />
-        <Stack.Screen 
-          name="MyBookings" 
-          component={MyBookingsScreen} 
-          options={{ headerShown: false }} 
-        />
-      </Stack.Navigator>
-    </NavigationContainer>
+    <SafeAreaProvider>
+      <NavigationContainer>
+        <Stack.Navigator initialRouteName={initialRoute}>
+          <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="Register" component={RegisterScreen} options={{ headerShown: false }} />
+          <Stack.Screen
+            name="Home"
+            component={HomeScreen}
+            options={{ title: 'Dashboard', headerShown: false }}
+          />
+          <Stack.Screen
+            name="Search"
+            component={SearchScreen}
+            options={{ headerShown: false, animation: 'fade' }}
+          />
+          <Stack.Screen
+            name="ParkingDetails"
+            component={ParkingDetailsScreen}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="Booking"
+            component={BookingScreen}
+            options={{ headerShown: false, animation: 'slide_from_bottom' }}
+          />
+          <Stack.Screen
+            name="Payment"
+            component={PaymentScreen}
+            options={{ headerShown: false, animation: 'slide_from_right' }}
+          />
+          <Stack.Screen
+            name="Ticket"
+            component={TicketScreen}
+            options={{ headerShown: false, animation: 'fade', gestureEnabled: false }}
+          />
+          <Stack.Screen
+            name="MyBookings"
+            component={MyBookingsScreen}
+            options={{ headerShown: false }}
+          />
+        </Stack.Navigator>
+      </NavigationContainer>
+    </SafeAreaProvider>
   );
 }

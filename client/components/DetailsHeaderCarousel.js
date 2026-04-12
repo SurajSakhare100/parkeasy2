@@ -48,7 +48,7 @@ const styles = StyleSheet.create({
   },
   backButton: {
     position: 'absolute',
-    top: Platform.OS === 'ios' ? 50 : 30, // Safe area roughly
+    top: 30, // Safe area roughly
     left: 20,
     padding: 5,
   },

@@ -120,11 +120,11 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.background,
   },
   scrollContent: {
-    paddingBottom: 20, 
+    paddingBottom: 120, // Avoid overlap with bottom bar
   },
   bookmarkButton: {
     position: 'absolute',
-    top: 30, // aligning roughly with back button from carousel
+    top: 30,
     right: 20,
     width: 40,
     height: 40,

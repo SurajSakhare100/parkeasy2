@@ -120,9 +120,9 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.background,
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
-    paddingHorizontal: 25,
-    paddingBottom: Platform.OS === 'ios' ? 40 : 25,
-    paddingTop: 15,
+    paddingHorizontal: 20,
+    paddingBottom: 25,
+    borderTopWidth: 1.5,
   },
   closeHandle: {
     width: 40,

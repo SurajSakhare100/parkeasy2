@@ -49,7 +49,7 @@ export default function LoginScreen({ navigation }) {
   return (
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior="height"
         style={{ flex: 1 }}
       >
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
@@ -59,7 +59,7 @@ export default function LoginScreen({ navigation }) {
               <Image
                 source={require('../assets/parkicon.png')}
                 style={styles.logo}
-                resizeMode="contain"
+                resizeMode="cover"
               />
             </View>
             <Text style={styles.brandName}>ParkEasy</Text>
@@ -130,7 +130,7 @@ export default function LoginScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: COLORS.white,
   },
   scrollContent: {
     padding: 24,

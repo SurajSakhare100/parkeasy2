@@ -8,7 +8,7 @@ async function sendOtpHelper(phone) {
   const apiKey = process.env.TWO_FACTOR_API_KEY;
   if (!apiKey) throw new Error("TWO_FACTOR_API_KEY is missing in environment");
   
-  const url = `https://2factor.in/API/V1/${apiKey}/SMS/${phone}/AUTOGEN`;
+  const url = `https://2factor.in/API/V1/${apiKey}/SMS/+91${phone}/AUTOGEN`;
   const res = await fetch(url);
   const data = await res.json();
 
@@ -43,30 +43,56 @@ const generateToken = (user) => {
  */
 export const register = async (req, res) => {
   try {
-    const { name, email, password, role } = req.body;
+    const { name, email, phone, password, role, otp } = req.body;
 
-    if (!email || !password) {
-      return res.status(400).json({ message: "Email and password are required" });
+    if (!password) {
+      return res.status(400).json({ message: "Password is required" });
+    }
+    if (!phone) {
+      return res.status(400).json({ message: "Phone is required" });
+    }
+    if (!otp) {
+      return res.status(400).json({ message: "OTP is required for registration" });
     }
 
     // Check if user exists
-    const existingUser = await User.findOne({ email });
+    let existingUserQuery = [];
+    if (email) existingUserQuery.push({ email });
+    if (phone) existingUserQuery.push({ phone });
+
+    const existingUser = await User.findOne({ $or: existingUserQuery });
     if (existingUser) {
-      return res.status(400).json({ message: "User with this email already exists" });
+      return res.status(400).json({ message: "User with this email or phone already exists" });
     }
+
+    // Verify OTP
+    const otpDoc = await OTP.findOne({ phone });
+    if (!otpDoc) {
+      return res.status(400).json({ message: "OTP expired or not found" });
+    }
+
+    const isValid = await verifyOtpHelper(otpDoc.sessionId, otp);
+    if (!isValid) {
+      return res.status(400).json({ message: "Invalid OTP" });
+    }
+
+    await OTP.deleteMany({ phone });
 
     // Hash password
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
     // Create user
-    const user = await User.create({
+    const userData = {
       name,
-      email,
       password: hashedPassword,
       role: role || "customer",
-      isVerified: true, // Email registration assumed verified for now or separate flow
-    });
+      isVerified: true, // Email/Phone registration assumed verified for now or separate flow
+    };
+    if (email) userData.email = email;
+    if (phone) userData.phone = phone;
+
+    const user = await User.create(userData);
 
     console.log(`User registered: ${email}`);
     res.status(201).json({ message: "Registration successful", userId: user._id });
@@ -81,14 +107,19 @@ export const register = async (req, res) => {
  */
 export const login = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, phone, password, role } = req.body;
 
-    if (!email || !password) {
-      return res.status(400).json({ message: "Email and password are required" });
+    if ((!email && !phone) || !password) {
+      return res.status(400).json({ message: "Email/Phone and password are required" });
     }
 
     // Find user
-    const user = await User.findOne({ email });
+    const query = phone ? { phone } : { email };
+    
+    // Optionally narrow by role if enforced
+    // if (role) query.role = role;
+
+    const user = await User.findOne(query);
     if (!user) {
       return res.status(400).json({ message: "Invalid credentials" });
     }
@@ -109,6 +140,7 @@ export const login = async (req, res) => {
       user: {
         id: user._id,
         email: user.email,
+        phone: user.phone,
         name: user.name,
         role: user.role,
       },

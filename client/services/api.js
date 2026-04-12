@@ -1,5 +1,6 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { DeviceEventEmitter } from 'react-native';
 
 const api = axios.create({
   baseURL: process.env.EXPO_PUBLIC_API_URL,
@@ -24,8 +25,16 @@ api.interceptors.request.use(
 // ── Response Interceptor: log errors ────────────────────────────────────────
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
+  async (error) => {
     console.error('API Error:', error.response?.data || error.message);
+    
+    // Redirect to login if 401 Unauthorized
+    if (error.response && error.response.status === 401) {
+      await AsyncStorage.removeItem('userToken');
+      await AsyncStorage.removeItem('user');
+      DeviceEventEmitter.emit('auth_error');
+    }
+    
     return Promise.reject(error);
   }
 );

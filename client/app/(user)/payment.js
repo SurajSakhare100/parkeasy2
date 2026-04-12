@@ -2,18 +2,19 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import React, { useState, useRef } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity,
-  Platform, Alert, ActivityIndicator, ScrollView
+   Alert, ActivityIndicator, ScrollView
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { WebView } from 'react-native-webview';
-import { COLORS, SIZES, SHADOWS } from '../theme';
-import paymentService from '../services/paymentService';
+import { COLORS, SIZES, SHADOWS } from '../../theme';
+import paymentService from '../../services/paymentService';
 
 export default function PaymentScreen() {
-  const navigation = useNavigation();
-  const route = useRoute();
-  const { bookingId, totalAmount, durationHours, parking, vehicleType, startTime, endTime } = route.params;
+  const navigation = useRouter();
+  const params = useLocalSearchParams();
+  const { bookingId, totalAmount, durationHours, parking: parkingParam, vehicleType, startTime, endTime } = params;
+  const parking = typeof parkingParam === 'string' ? JSON.parse(parkingParam) : parkingParam;
 
   const [step, setStep] = useState('summary'); // 'summary' | 'webview' | 'loading'
   const [orderData, setOrderData] = useState(null);
@@ -46,7 +47,7 @@ export default function PaymentScreen() {
           bookingId,
         });
 
-        navigation.replace('Ticket', { booking: result.booking });
+        navigation.replace({ pathname: '/ticket', params: { booking: JSON.stringify(result.booking) } });
 
       } else if (data.type === 'PAYMENT_FAILED') {
         setStep('summary');
@@ -181,7 +182,7 @@ export default function PaymentScreen() {
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={22} color={COLORS.oliveDark} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Payment Summary</Text>

@@ -1,25 +1,21 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Button, Platform } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import MyBookingsScreen from './MyBookingsScreen';
-import UserHomeScreen from './UserHomeScreen';
-import SavedParkingScreen from './SavedParkingScreen';
+import MyBookingsScreen from './my-bookings';
+import UserHomeScreen from './user-home';
+import SavedParkingScreen from './saved';
+import ProfileScreen from './profile';
 
-// Placeholder Screens
-import ProfileScreen from './ProfileScreen';
-
-export default function HomeScreen({ navigation }) {
-  // Using 1 for Bookings as in the screenshot, the highlighted item is the 2nd one.
-  const [currentIndex, setCurrentIndex] = useState(1);
+export default function HomeScreen() {
+  const [currentIndex, setCurrentIndex] = useState(0);
 
   const renderScreen = () => {
     switch (currentIndex) {
       case 0: return <UserHomeScreen />;
       case 1: return <MyBookingsScreen />;  
       case 2: return <SavedParkingScreen />;
-      case 3: return <ProfileScreen navigation={navigation} />;
-      default: return <MyBookingsScreen />;
+      case 3: return <ProfileScreen />;
+      default: return <UserHomeScreen />;
     }
   };
 
@@ -62,7 +58,6 @@ export default function HomeScreen({ navigation }) {
   );
 }
 
-// Reusable Bottom Navigation Item Component exactly matching the image
 const NavItem = ({ iconName, label, isActive, onPress }) => {
   if (isActive) {
     return (
@@ -83,43 +78,10 @@ const NavItem = ({ iconName, label, isActive, onPress }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF', // To match design
+    backgroundColor: '#FFFFFF', 
   },
   content: {
     flex: 1,
-  },
-  screen: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-    backgroundColor: '#FFFFFF',
-  },
-  screenTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    marginBottom: 20,
-    color: '#4C4223',
-  },
-  text: {
-    fontSize: 16,
-    marginBottom: 20,
-    color: '#333',
-  },
-  tokenText: {
-    color: '#8E8E93',
-    marginBottom: 30,
-    textAlign: 'center'
-  },
-  logoutButton: {
-    backgroundColor: '#FBD427',
-    paddingHorizontal: 30,
-    paddingVertical: 12,
-    borderRadius: 8,
-  },
-  logoutText: {
-    fontWeight: 'bold',
-    color: '#4C4223',
   },
   bottomNavContainer: {
     position: 'absolute',
@@ -139,10 +101,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     width: '90%',
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowOffset: { width: 0, height: 4 },
-    shadowRadius: 10,
     elevation: 6,
   },
   navItem: {
@@ -151,7 +109,7 @@ const styles = StyleSheet.create({
   },
   activePill: {
     flexDirection: 'row',
-    backgroundColor: '#A08A38', // The olive/brown color from design
+    backgroundColor: '#A08A38', 
     paddingHorizontal: 18,
     paddingVertical: 10,
     borderRadius: 25,

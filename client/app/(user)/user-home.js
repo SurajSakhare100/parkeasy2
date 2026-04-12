@@ -2,13 +2,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { COLORS, SIZES, SHADOWS } from '../theme';
-import FilterModal from '../components/FilterModal';
-import { useNavigation } from '@react-navigation/native';
+import { COLORS, SIZES, SHADOWS } from '../../theme';
+import FilterModal from '../../components/FilterModal';
+import { useRouter } from 'expo-router';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import * as Location from 'expo-location';
 import axios from 'axios';
-import parkingService from '../services/parkingService';
+import parkingService from '../../services/parkingService';
 
 export default function UserHomeScreen() {
   const [filterVisible, setFilterVisible] = useState(false);
@@ -23,7 +23,7 @@ export default function UserHomeScreen() {
     longitudeDelta: 0.05,
   });
 
-  const navigation = useNavigation();
+  const navigation = useRouter();
 
   useEffect(() => {
     (async () => {
@@ -94,7 +94,7 @@ export default function UserHomeScreen() {
               selectedParking?._id === parking._id && styles.selectedMarker
             ]}>
               <Image
-                source={require('../assets/parkMarker.png')}
+                source={require('../../assets/parkMarker.png')}
                 style={styles.markerIcon}
               />
               <View style={styles.pinPrice}>
@@ -130,7 +130,7 @@ export default function UserHomeScreen() {
           <View style={styles.searchContainer}>
             <TouchableOpacity
               style={styles.searchInputMock}
-              onPress={() => navigation.navigate('Search')}
+              onPress={() => navigation.push('/search')}
               activeOpacity={0.8}
             >
               <Ionicons name="search" size={20} color={COLORS.oliveDark} style={{ marginRight: 10 }} />
@@ -148,7 +148,7 @@ export default function UserHomeScreen() {
             <TouchableOpacity
               style={styles.parkingCard}
               activeOpacity={0.9}
-              onPress={() => navigation.navigate('ParkingDetails', { parking: selectedParking })}
+              onPress={() => navigation.push({ pathname: '/parking-details', params: { parking: JSON.stringify(selectedParking) } })}
             >
               <Image
                 source={{ uri: 'https://images.unsplash.com/photo-1590674899484-13da0d1b58f5?w=400&fit=crop' }}
@@ -178,7 +178,14 @@ export default function UserHomeScreen() {
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={styles.bookBtn}
-                    onPress={() => navigation.navigate('ParkingDetails', { parking: selectedParking })}
+                    onPress={() =>
+                      navigation.push({
+                        pathname: '/parking-details',
+                        params: {
+                          parking: JSON.stringify(selectedParking),
+                        },
+                      })
+                    }
                   >
                     <Text style={styles.bookBtnText}>Book Now</Text>
                   </TouchableOpacity>
@@ -186,9 +193,10 @@ export default function UserHomeScreen() {
               </View>
             </TouchableOpacity>
           </View>
-        )}
+        )
+        }
 
-      </SafeAreaView>
+      </SafeAreaView >
 
       <FilterModal
         visible={filterVisible}
@@ -198,7 +206,7 @@ export default function UserHomeScreen() {
           // In a real app we'd dispatch filtering logic here!
         }}
       />
-    </View>
+    </View >
   );
 }
 

@@ -14,7 +14,7 @@ const userSchema = new Schema(
       unique: true,
       lowercase: true,
       trim: true,
-      sparse: true, // Allows null/missing values while still being unique if present
+      sparse: true,
     },
     password: {
       type: String,

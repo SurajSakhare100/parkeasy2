@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, Platform, TouchableOpacity } from 'react-native';
-import { useRoute, useNavigation } from '@react-navigation/native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { COLORS } from '../theme';
-import userService from '../services/userService';
+import { COLORS } from '../../theme';
+import userService from '../../services/userService';
 
-import DetailsHeaderCarousel from '../components/DetailsHeaderCarousel';
-import DetailsInfoSection from '../components/DetailsInfoSection';
-import OwnerContactCard from '../components/OwnerContactCard';
-import BottomBookingBar from '../components/BottomBookingBar';
+import DetailsHeaderCarousel from '../../components/DetailsHeaderCarousel';
+import DetailsInfoSection from '../../components/DetailsInfoSection';
+import OwnerContactCard from '../../components/OwnerContactCard';
+import BottomBookingBar from '../../components/BottomBookingBar';
 
 const FALLBACK_IMAGES = [
   'https://images.unsplash.com/photo-1590674899484-13da0d1b58f5?w=800&fit=crop',
@@ -16,19 +16,15 @@ const FALLBACK_IMAGES = [
 ];
 
 export default function ParkingDetailsScreen() {
-  const route = useRoute();
-  const navigation = useNavigation();
+  const params = useLocalSearchParams();
+  const router = useRouter();
 
-  // 'parking' passed from HomeScreen / SearchScreen markers
-  const parking = route.params?.parking;
+  const parking = params?.parking ? JSON.parse(params.parking) : null;
 
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [loadingBookmark, setLoadingBookmark] = useState(false);
 
   useEffect(() => {
-    // Check if it's already saved by checking current user's saved parkings. 
-    // For a real app, you might pass it down or quickly fetch status here.
-    // For now we'll fetch profile to set initial state
     const checkSavedStatus = async () => {
       try {
         if (!parking?._id) return;
@@ -71,16 +67,16 @@ export default function ParkingDetailsScreen() {
 
   const handleBookNow = () => {
     if (!parking) return;
-    navigation.navigate('Booking', { parking });
+    router.push({ pathname: '/(user)/booking', params: { parking: JSON.stringify(parking) } });
   };
 
   return (
     <View style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-        
+
         <DetailsHeaderCarousel images={details.images} />
-        
-        <DetailsInfoSection 
+
+        <DetailsInfoSection
           title={details.title}
           address={details.address}
           rating={details.rating}
@@ -89,7 +85,7 @@ export default function ParkingDetailsScreen() {
           about={details.about}
         />
 
-        <OwnerContactCard 
+        <OwnerContactCard
           ownerName={details.ownerName}
           ownerAvatar={details.ownerAvatar}
         />
@@ -97,18 +93,18 @@ export default function ParkingDetailsScreen() {
       </ScrollView>
 
       {/* Floating Bookmark icon */}
-      <TouchableOpacity 
-        style={styles.bookmarkButton} 
+      <TouchableOpacity
+        style={styles.bookmarkButton}
         onPress={handleToggleBookmark}
         disabled={loadingBookmark}
       >
-        <Ionicons 
-          name={isBookmarked ? "bookmark" : "bookmark-outline"} 
-          size={24} 
-          color={COLORS.primary} 
+        <Ionicons
+          name={isBookmarked ? "bookmark" : "bookmark-outline"}
+          size={24}
+          color={COLORS.primary}
         />
       </TouchableOpacity>
-      
+
       <BottomBookingBar price={details.price} onBookNow={handleBookNow} />
     </View>
   );

@@ -5,8 +5,8 @@ import {
   Platform, ScrollView, Image, Share, Animated
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation, useRoute } from '@react-navigation/native';
-import { COLORS, SIZES, SHADOWS } from '../theme';
+import { useRouter, useLocalSearchParams } from 'expo-router';
+import { COLORS, SIZES, SHADOWS } from '../../theme';
 
 function formatDateTime(isoString) {
   const d = new Date(isoString);
@@ -17,9 +17,9 @@ function formatDateTime(isoString) {
 }
 
 export default function TicketScreen() {
-  const navigation = useNavigation();
-  const route = useRoute();
-  const { booking } = route.params;
+  const navigation = useRouter();
+  const params = useLocalSearchParams();
+  const { booking } = params;
 
   const scaleAnim = useRef(new Animated.Value(0)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -169,8 +169,8 @@ export default function TicketScreen() {
             <Text style={styles.shareBtnText}>Share Ticket</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={styles.homeBtn}
-            onPress={() => navigation.navigate('Home')}
+            style={styles.btnSolid}
+            onPress={() => navigation.push('/user-home')}
             activeOpacity={0.8}
           >
             <Text style={styles.homeBtnText}>Back to Home</Text>
@@ -179,8 +179,8 @@ export default function TicketScreen() {
 
         {/* View Bookings Link */}
         <Animated.View style={{ opacity: fadeAnim, alignItems: 'center', marginBottom: 40 }}>
-          <TouchableOpacity onPress={() => navigation.navigate('MyBookings')}>
-            <Text style={styles.viewAllBookings}>View All Bookings →</Text>
+          <TouchableOpacity onPress={() => navigation.push('/my-bookings')}>
+            <Text style={styles.viewAllText}>View All Bookings</Text>
           </TouchableOpacity>
         </Animated.View>
 

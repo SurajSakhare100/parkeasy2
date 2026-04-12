@@ -5,9 +5,9 @@ import {
   Image, Platform, ActivityIndicator, RefreshControl
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
-import { COLORS, SIZES, SHADOWS } from '../theme';
-import bookingService from '../services/bookingService';
+import { useRouter, useFocusEffect } from 'expo-router';
+import { COLORS, SIZES, SHADOWS } from '../../theme';
+import bookingService from '../../services/bookingService';
 
 const STATUS_CONFIG = {
   booked: { label: 'Booked', bg: '#E8F5E9', text: '#2E7D32' },
@@ -26,7 +26,7 @@ function formatSlot(startTime, endTime) {
 }
 
 export default function MyBookingsScreen() {
-  const navigation = useNavigation();
+  const navigation = useRouter();
   const [activeTab, setActiveTab] = useState('ACTIVE');
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -70,7 +70,7 @@ export default function MyBookingsScreen() {
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={22} color={COLORS.oliveDark} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>My Bookings</Text>
@@ -105,7 +105,7 @@ export default function MyBookingsScreen() {
           <Text style={styles.emptySubtitle}>Your bookings will appear here</Text>
           <TouchableOpacity
             style={styles.findParkingBtn}
-            onPress={() => navigation.navigate('Home')}
+            onPress={() => navigation.push('/user-home')}
           >
             <Text style={styles.findParkingBtnText}>Find Parking</Text>
           </TouchableOpacity>
@@ -155,18 +155,21 @@ export default function MyBookingsScreen() {
                 <View style={styles.actionRow}>
                   <TouchableOpacity
                     style={styles.btnOutline}
-                    onPress={() => navigation.navigate('Ticket', {
-                      booking: {
-                        id: item._id,
-                        parkingName: parking?.name,
-                        address: parking?.address,
-                        vehicleType: item.vehicleType,
-                        startTime: item.startTime,
-                        endTime: item.endTime,
-                        totalAmount: item.totalAmount,
-                        qrCode: item.qrCode,
-                        qrCodeImage: item.qrCodeImage,
-                        status: item.status,
+                    onPress={() => navigation.push({
+                      pathname: '/ticket',
+                      params: {
+                        booking: {
+                          id: item._id,
+                          parkingName: parking?.name,
+                          address: parking?.address,
+                          vehicleType: item.vehicleType,
+                          startTime: item.startTime,
+                          endTime: item.endTime,
+                          totalAmount: item.totalAmount,
+                          qrCode: item.qrCode,
+                          qrCodeImage: item.qrCodeImage,
+                          status: item.status,
+                        }
                       }
                     })}
                   >
@@ -177,14 +180,14 @@ export default function MyBookingsScreen() {
                   {activeTab === 'ACTIVE' ? (
                     <TouchableOpacity
                       style={styles.btnSolid}
-                      onPress={() => navigation.navigate('ParkingDetails', { parking })}
+                      onPress={() => navigation.push({ pathname: '/parking-details', params: { parking: JSON.stringify(parking) } })}
                     >
                       <Text style={styles.btnSolidText}>View Details</Text>
                     </TouchableOpacity>
                   ) : (
                     <TouchableOpacity
                       style={styles.btnSolid}
-                      onPress={() => navigation.navigate('ParkingDetails', { parking })}
+                      onPress={() => navigation.push({ pathname: '/parking-details', params: { parking: JSON.stringify(parking) } })}
                     >
                       <Text style={styles.btnSolidText}>Book Again</Text>
                     </TouchableOpacity>

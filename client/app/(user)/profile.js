@@ -3,10 +3,12 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
-import { COLORS, SIZES, SHADOWS } from '../theme';
-import userService from '../services/userService';
+import { useRouter } from 'expo-router';
+import { COLORS, SIZES, SHADOWS } from '../../theme';
+import userService from '../../services/userService';
 
-export default function ProfileScreen({ navigation }) {
+export default function ProfileScreen() {
+  const router = useRouter();
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -29,10 +31,7 @@ export default function ProfileScreen({ navigation }) {
   const handleLogout = async () => {
     await AsyncStorage.removeItem('userToken');
     await AsyncStorage.removeItem('user');
-    navigation.reset({
-      index: 0,
-      routes: [{ name: 'Login' }],
-    });
+    router.replace('/(auth)/login');
   };
 
   if (loading) {
@@ -111,7 +110,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,
-    paddingBottom: 100, // accommodate bottom nav
+    paddingBottom: 100, 
   },
   profileCard: {
     backgroundColor: COLORS.backgroundLight,

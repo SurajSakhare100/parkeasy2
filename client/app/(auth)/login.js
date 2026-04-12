@@ -13,34 +13,45 @@ import {
   ScrollView
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { COLORS, SIZES, SHADOWS } from '../theme';
+import { COLORS, SIZES, SHADOWS } from '../../theme';
 import { Ionicons } from '@expo/vector-icons';
-import authService from '../services/authService';
+import authService from '../../services/authService';
+import { useRouter } from 'expo-router';
 
-const API_URL = 'http://192.168.1.104:5000/api/auth';
-
-export default function RegisterScreen({ navigation }) {
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
+export default function LoginScreen() {
+  const router = useRouter();
+  // const [email, setEmail] = useState(''); // Commented down email field
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
+  const [role, setRole] = useState('client'); // default role
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const handleRegister = async () => {
-    if (!name || !email || !password) {
+  const handleLogin = async () => {
+    if (!phone || !password) {
       Alert.alert('Error', 'Please fill in all fields');
       return;
     }
 
+
+
     setLoading(true);
     try {
-      await authService.register(name, email, password);
+      // Call actual backend login using phone, password, and role
+      const data = await authService.login(phone, password, role);
 
-      Alert.alert('Success', 'Account created successfully! Please login.');
-      navigation.navigate('Login');
+      const { token, user } = data;
+      await AsyncStorage.setItem('userToken', token);
+      await AsyncStorage.setItem('user', JSON.stringify(user));
+
+      if (role === 'owner') {
+        router.replace('/(owner)/home');
+      } else {
+        router.replace('/(user)/my-bookings');
+      }
+
     } catch (error) {
-      // Error is already logged in api.js
-      Alert.alert('Error', error.response?.data?.message || 'Registration failed');
+      Alert.alert('Error', error.response?.data?.message || 'Login failed. Please check your credentials.');
     } finally {
       setLoading(false);
     }
@@ -57,30 +68,36 @@ export default function RegisterScreen({ navigation }) {
           <View style={styles.logoContainer}>
             <View style={styles.logoCircle}>
               <Image
-                source={require('../assets/parkicon.png')}
+                source={require('../../assets/parkicon.png')}
                 style={styles.logo}
                 resizeMode="cover"
               />
             </View>
             <Text style={styles.brandName}>ParkEasy</Text>
-            <Text style={styles.subtitle}>Join our community</Text>
+            <Text style={styles.subtitle}>Find your spot with ease</Text>
           </View>
 
           {/* Form Section */}
           <View style={styles.formContainer}>
-            <Text style={styles.title}>Register</Text>
+            <Text style={styles.title}>Login</Text>
 
-            <View style={styles.inputWrapper}>
-              <Ionicons name="person-outline" size={20} color={COLORS.olive} style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder="Full Name"
-                placeholderTextColor={COLORS.textLight}
-                value={name}
-                onChangeText={setName}
-              />
+            {/* Role Selection */}
+            <View style={styles.roleContainer}>
+              <TouchableOpacity
+                style={[styles.roleBtn, role === 'client' && styles.roleBtnActive]}
+                onPress={() => setRole('client')}
+              >
+                <Text style={[styles.roleText, role === 'client' && styles.roleTextActive]}>Client</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.roleBtn, role === 'owner' && styles.roleBtnActive]}
+                onPress={() => setRole('owner')}
+              >
+                <Text style={[styles.roleText, role === 'owner' && styles.roleTextActive]}>Owner</Text>
+              </TouchableOpacity>
             </View>
 
+            {/* Commented out email input
             <View style={styles.inputWrapper}>
               <Ionicons name="mail-outline" size={20} color={COLORS.olive} style={styles.inputIcon} />
               <TextInput
@@ -91,6 +108,19 @@ export default function RegisterScreen({ navigation }) {
                 onChangeText={setEmail}
                 autoCapitalize="none"
                 keyboardType="email-address"
+              />
+            </View>
+            */}
+
+            <View style={styles.inputWrapper}>
+              <Ionicons name="call-outline" size={20} color={COLORS.olive} style={styles.inputIcon} />
+              <TextInput
+                style={styles.input}
+                placeholder="Mobile Number"
+                placeholderTextColor={COLORS.textLight}
+                value={phone}
+                onChangeText={setPhone}
+                keyboardType="phone-pad"
               />
             </View>
 
@@ -113,18 +143,25 @@ export default function RegisterScreen({ navigation }) {
               </TouchableOpacity>
             </View>
 
-            <TouchableOpacity
-              style={[styles.registerBtn, loading && { opacity: 0.7 }]}
-              onPress={handleRegister}
-              disabled={loading}
-            >
-              <Text style={styles.registerBtnText}>{loading ? 'Creating Account...' : 'Register'}</Text>
+
+            <TouchableOpacity style={styles.forgotBtn}>
+              <Text style={styles.forgotText}>Forgot Password?</Text>
             </TouchableOpacity>
 
-            <View style={styles.loginLinkContainer}>
-              <Text style={styles.loginText}>Already have an account? </Text>
-              <TouchableOpacity onPress={() => navigation.navigate('Login')}>
-                <Text style={styles.loginLink}>Login</Text>
+            <TouchableOpacity
+              style={[styles.loginBtn, loading && { opacity: 0.7 }]}
+              onPress={handleLogin}
+              disabled={loading}
+            >
+              <Text style={styles.loginBtnText}>
+                {loading ? 'Please wait...' : 'Login'}
+              </Text>
+            </TouchableOpacity>
+
+            <View style={styles.registerContainer}>
+              <Text style={styles.registerText}>Don't have an account? </Text>
+              <TouchableOpacity onPress={() => router.push('/register')}>
+                <Text style={styles.registerLink}>Register</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -137,7 +174,7 @@ export default function RegisterScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: COLORS.white,
   },
   scrollContent: {
     padding: 24,
@@ -146,30 +183,31 @@ const styles = StyleSheet.create({
   },
   logoContainer: {
     alignItems: 'center',
-    marginBottom: 30,
+    marginBottom: 40,
   },
   logoCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: 100,
+    height: 100,
+    borderRadius: 50,
     backgroundColor: COLORS.badgeBg,
     justifyContent: 'center',
     alignItems: 'center',
     ...SHADOWS.medium,
   },
   logo: {
-    width: 50,
-    height: 50,
+    width: 60,
+    height: 60,
   },
   brandName: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: 'bold',
     color: COLORS.oliveDark,
-    marginTop: 10,
+    marginTop: 15,
   },
   subtitle: {
     fontSize: 14,
     color: COLORS.textLight,
+    marginTop: 5,
   },
   formContainer: {
     width: '100%',
@@ -179,6 +217,32 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: COLORS.text,
     marginBottom: 20,
+  },
+  roleContainer: {
+    flexDirection: 'row',
+    marginBottom: 16,
+    borderRadius: SIZES.radius,
+    backgroundColor: COLORS.backgroundLight,
+    padding: 4,
+  },
+  roleBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    alignItems: 'center',
+    borderRadius: SIZES.radius - 4,
+  },
+  roleBtnActive: {
+    backgroundColor: COLORS.white,
+    ...SHADOWS.light,
+  },
+  roleText: {
+    fontSize: SIZES.font,
+    color: COLORS.textLight,
+    fontWeight: '600',
+  },
+  roleTextActive: {
+    color: COLORS.oliveDark,
+    fontWeight: 'bold',
   },
   inputWrapper: {
     flexDirection: 'row',
@@ -199,32 +263,39 @@ const styles = StyleSheet.create({
     color: COLORS.text,
     fontSize: SIZES.medium,
   },
-  registerBtn: {
+  forgotBtn: {
+    alignSelf: 'flex-end',
+    marginBottom: 24,
+  },
+  forgotText: {
+    color: COLORS.olive,
+    fontWeight: '600',
+    fontSize: SIZES.font,
+  },
+  loginBtn: {
     backgroundColor: COLORS.primary,
     height: 56,
     borderRadius: SIZES.radius,
     justifyContent: 'center',
     alignItems: 'center',
     ...SHADOWS.medium,
-    marginTop: 10,
     marginBottom: 24,
   },
-  registerBtnText: {
+  loginBtnText: {
     color: COLORS.oliveDark,
     fontSize: SIZES.large,
     fontWeight: 'bold',
   },
-  loginLinkContainer: {
+  registerContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 20,
   },
-  loginText: {
+  registerText: {
     color: COLORS.textLight,
     fontSize: SIZES.font,
   },
-  loginLink: {
+  registerLink: {
     color: COLORS.olive,
     fontSize: SIZES.font,
     fontWeight: 'bold',

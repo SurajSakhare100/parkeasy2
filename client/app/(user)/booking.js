@@ -5,9 +5,9 @@ import {
   Platform, Alert, ActivityIndicator
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation, useRoute } from '@react-navigation/native';
-import { COLORS, SIZES, SHADOWS } from '../theme';
-import bookingService from '../services/bookingService';
+import { useRouter, useLocalSearchParams } from 'expo-router';
+import { COLORS, SIZES, SHADOWS } from '../../theme';
+import bookingService from '../../services/bookingService';
 
 const VEHICLE_TYPES = [
   { key: 'car', label: 'Car', icon: 'car-outline' },
@@ -33,9 +33,20 @@ function formatDate(date) {
 }
 
 export default function BookingScreen() {
-  const navigation = useNavigation();
-  const route = useRoute();
-  const { parking } = route.params;
+  const navigation = useRouter();
+  const params = useLocalSearchParams();
+  
+  // Safely parse the parking parameter since it's passed as a JSON string
+  const parking = params?.parking ? (typeof params.parking === 'string' ? JSON.parse(params.parking) : params.parking) : null;
+
+  // Early return or fallback if parking is somehow null
+  if (!parking) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <Text style={{ textAlign: 'center', marginTop: 50 }}>Parking details not found.</Text>
+      </SafeAreaView>
+    );
+  }
 
   const [vehicleType, setVehicleType] = useState('car');
   const [selectedHours, setSelectedHours] = useState(1);
@@ -55,14 +66,17 @@ export default function BookingScreen() {
         endTime: endTime.toISOString(),
       });
 
-      navigation.navigate('Payment', {
-        bookingId: result.bookingId,
-        totalAmount: result.totalAmount,
-        durationHours: result.durationHours,
-        parking,
-        vehicleType,
-        startTime: startTime.toISOString(),
-        endTime: endTime.toISOString(),
+      navigation.push({
+        pathname: '/payment',
+        params: {
+          bookingId: result.bookingId,
+          totalAmount: result.totalAmount,
+          durationHours: result.durationHours,
+          parking: JSON.stringify(parking),
+          vehicleType,
+          startTime: startTime.toISOString(),
+          endTime: endTime.toISOString(),
+        }
       });
     } catch (error) {
       Alert.alert('Booking Failed', error.response?.data?.message || 'Could not create booking. Please try again.');
@@ -75,7 +89,7 @@ export default function BookingScreen() {
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={22} color={COLORS.oliveDark} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Book Parking</Text>

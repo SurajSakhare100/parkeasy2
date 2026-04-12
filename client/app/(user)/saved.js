@@ -2,15 +2,15 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, FlatList, Image, Platform, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { COLORS, SIZES, SHADOWS } from '../theme';
-import { useNavigation, useIsFocused } from '@react-navigation/native';
-import userService from '../services/userService';
+import { COLORS, SIZES, SHADOWS } from '../../theme';
+import { useRouter, useIsFocused } from 'expo-router';
+import userService from '../../services/userService';
 
 // Default parking image if none provided
 const DEFAULT_IMAGE = "https://images.unsplash.com/photo-1590674899484-13da0d1b58f5?w=200&fit=crop";
 
 export default function SavedParkingScreen() {
-  const navigation = useNavigation();
+  const navigation = useRouter();
   const isFocused = useIsFocused();
   const [savedLocations, setSavedLocations] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -28,6 +28,10 @@ export default function SavedParkingScreen() {
       setSavedLocations(data);
     } catch (error) {
       console.error("Error loading saved parkings:", error);
+      if (error.response && error.response.status === 401) {
+        // Token is invalid or expired
+        navigation.replace('/(auth)/login');
+      }
     } finally {
       setLoading(false);
     }
@@ -37,7 +41,7 @@ export default function SavedParkingScreen() {
     <TouchableOpacity 
       style={styles.card} 
       activeOpacity={0.8}
-      onPress={() => navigation.navigate('ParkingDetails', { parking: item })}
+      onPress={() => navigation.push({ pathname: '/parking-details', params: { parking: JSON.stringify(item) } })}
     >
       <Image source={{ uri: item.image || item.images?.[0] || DEFAULT_IMAGE }} style={styles.cardImage} />
       <View style={styles.cardInfo}>

@@ -2,8 +2,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, FlatList, Platform, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { COLORS, SIZES } from '../theme';
-import parkingService from '../services/parkingService';
+import { COLORS, SIZES } from '../../theme';
+import parkingService from '../../services/parkingService';
 
 export default function SearchScreen({ navigation }) {
   const [searchQuery, setSearchQuery] = useState('');
@@ -38,7 +38,7 @@ export default function SearchScreen({ navigation }) {
     <TouchableOpacity 
       style={styles.resultItem}
       activeOpacity={0.7}
-      onPress={() => navigation.navigate('ParkingDetails', { parking: item })}
+      onPress={() => navigation.push({ pathname: '/parking-details', params: { parking: JSON.stringify(item) } })}
     >
       <View style={styles.iconContainer}>
         <Ionicons name="car" size={20} color={COLORS.oliveDark} />
@@ -60,7 +60,7 @@ export default function SearchScreen({ navigation }) {
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
         {/* Header */}
-        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={24} color={COLORS.text} />
         </TouchableOpacity>
 

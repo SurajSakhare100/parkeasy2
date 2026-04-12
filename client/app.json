@@ -26,6 +26,10 @@
       "image": "./assets/parkicon.png",
       "resizeMode": "contain",
       "backgroundColor": "#FFFFFF"
-    }
+    },
+    "scheme": "parkeasy",
+    "plugins": [
+      "expo-router"
+    ]
   }
 }

@@ -1,18 +1,49 @@
-import { Stack } from 'expo-router';
+import { Tabs } from 'expo-router';
+import UserBottomNavbar from '../../components/UserBottomNavbar';
 
 export default function UserLayout() {
   return (
-    <Stack screenOptions={{ headerShown: false, animation: 'fade' }}>
-      <Stack.Screen name="index" options={{ title: 'Dashboard' }} />
-      <Stack.Screen name="booking" options={{ animation: 'slide_from_bottom' }} />
-      <Stack.Screen name="payment" options={{ animation: 'slide_from_right' }} />
-      <Stack.Screen name="ticket" options={{ gestureEnabled: false }} />
-      <Stack.Screen name="my-bookings" />
-      <Stack.Screen name="parking-details" />
-      <Stack.Screen name="profile" />
-      <Stack.Screen name="saved" />
-      <Stack.Screen name="search" />
-      <Stack.Screen name="user-home" />
-    </Stack>
+    <Tabs 
+      tabBar={(props) => <UserBottomNavbar {...props} />}
+      screenOptions={{ headerShown: false }}
+    >
+      <Tabs.Screen 
+        name="user-home" 
+        options={{ 
+          tabBarLabel: 'Home',
+        }} 
+      />
+      <Tabs.Screen 
+        name="search" 
+        options={{ 
+          tabBarLabel: 'Explore',
+        }} 
+      />
+      <Tabs.Screen 
+        name="saved" 
+        options={{ 
+          tabBarLabel: 'Saved',
+        }} 
+      />
+      <Tabs.Screen 
+        name="my-bookings" 
+        options={{ 
+          tabBarLabel: 'Bookings',
+        }} 
+      />
+      <Tabs.Screen 
+        name="profile" 
+        options={{ 
+          tabBarLabel: 'Profile',
+        }} 
+      />
+      
+      {/* Hide these from Bottom Navbar */}
+      <Tabs.Screen name="index" options={{ href: null }} />
+      <Tabs.Screen name="parking-details" options={{ href: null }} />
+      <Tabs.Screen name="booking" options={{ href: null }} />
+      <Tabs.Screen name="payment" options={{ href: null }} />
+      <Tabs.Screen name="ticket" options={{ href: null }} />
+    </Tabs>
   );
 }

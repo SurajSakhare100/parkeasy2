@@ -48,19 +48,18 @@ export default function RootLayout() {
         }
       } else if (userRole === 'customer') {
         if (inOwnerGroup || inAuthGroup) {
-          router.replace('/(user)/my-bookings');
+          router.replace('/(user)/user-home');
         }
       } else if (inAuthGroup) {
-        router.replace('/(user)/my-bookings');
+        router.replace('/(user)/user-home');
       }
     }
   }, [hasToken, userRole, segments, isLoading]);
 
   useEffect(() => {
-    // Listen for global authentication failures from API interceptor
     const authListener = DeviceEventEmitter.addListener('auth_error', () => {
-      setHasToken(false); // Update state so the dependency arrays trigger layout update natively
-      router.replace('/(auth)/login'); // Trigger navigation from within safe React context
+      setHasToken(false);
+      router.replace('/(auth)/login');
     });
 
     return () => authListener.remove();

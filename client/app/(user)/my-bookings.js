@@ -44,7 +44,6 @@ export default function MyBookingsScreen() {
     }
   };
 
-  // Refresh whenever this screen comes into focus (e.g., after a new booking)
   useFocusEffect(
     useCallback(() => {
       setLoading(true);
@@ -70,7 +69,7 @@ export default function MyBookingsScreen() {
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+        <TouchableOpacity onPress={() => navigation.canGoBack() ? navigation.back() : navigation.replace('/user-home')} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={22} color={COLORS.oliveDark} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>My Bookings</Text>

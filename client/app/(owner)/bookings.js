@@ -7,7 +7,7 @@ import bookingService from '../../services/bookingService';
 export default function BookingsScreen() {
     const [bookings, setBookings] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [filter, setFilter] = useState('all'); // all, today, yesterday, month
+    const [filter, setFilter] = useState('all');
 
     const fetchBookings = async () => {
         setLoading(true);

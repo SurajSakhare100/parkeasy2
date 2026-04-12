@@ -34,9 +34,15 @@ const bookingSchema = new Schema(
 
     status: {
       type: String,
-      enum: ["booked", "active", "completed", "cancelled"],
-      default: "booked",
+      enum: ["pending_payment", "booked", "active", "completed", "cancelled"],
+      default: "pending_payment",
       index: true,
+    },
+
+    totalAmount: {
+      type: Number,
+      required: true,
+      default: 0,
     },
 
     paymentId: {
@@ -45,9 +51,13 @@ const bookingSchema = new Schema(
     },
 
     qrCode: {
-      type: String, // store QR string/token
+      type: String, // store QR token string
       required: true,
       unique: true,
+    },
+
+    qrCodeImage: {
+      type: String, // base64 data URL of the QR image
     },
 
     entryTime: Date,

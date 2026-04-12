@@ -1,44 +1,59 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, FlatList, SafeAreaView, Platform } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, FlatList, Platform, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SIZES } from '../theme';
-
-const searchResults = [
-  {
-    id: '1',
-    name: 'Meme Parking',
-    address: '86th St, Near JN Road, Pune',
-    rating: 4.5,
-    distance: '300m',
-  },
-  {
-    id: '2',
-    name: 'Safe Parking',
-    address: '16 Avenue, Nr. Jawaharlal Nehru Rd, Pune',
-    rating: 4.5,
-    distance: '750m',
-  }
-];
+import parkingService from '../services/parkingService';
 
 export default function SearchScreen({ navigation }) {
-  const [searchQuery, setSearchQuery] = useState('Jawaharlal');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [results, setResults] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const delayDebounceFn = setTimeout(() => {
+      if (searchQuery.trim() !== '') {
+        executeSearch(searchQuery);
+      } else {
+        setResults([]);
+      }
+    }, 500); // 500ms debounce
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [searchQuery]);
+
+  const executeSearch = async (query) => {
+    try {
+      setLoading(true);
+      const data = await parkingService.searchParkings(query);
+      setResults(data);
+    } catch (error) {
+      console.error("Search error:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const renderItem = ({ item }) => (
-    <View style={styles.resultItem}>
+    <TouchableOpacity 
+      style={styles.resultItem}
+      activeOpacity={0.7}
+      onPress={() => navigation.navigate('ParkingDetails', { parking: item })}
+    >
       <View style={styles.iconContainer}>
         <Ionicons name="car" size={20} color={COLORS.oliveDark} />
       </View>
       <View style={styles.resultInfo}>
         <Text style={styles.resultTitle}>{item.name}</Text>
-        <Text style={styles.resultAddress}>{item.address}</Text>
+        <Text style={styles.resultAddress}>{item.address || item.locationText}</Text>
       </View>
       <View style={styles.resultStats}>
         <Text style={styles.resultRating}>
-          <Ionicons name="star" size={14} color={COLORS.primary} /> {item.rating}
+          <Ionicons name="star" size={14} color={COLORS.primary} /> 4.5
         </Text>
-        <Text style={styles.resultDistance}>{item.distance}</Text>
+        <Text style={styles.resultDistance}>—</Text>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 
   return (
@@ -66,13 +81,22 @@ export default function SearchScreen({ navigation }) {
         </View>
 
         {/* List */}
-        <FlatList
-          data={searchResults}
-          keyExtractor={item => item.id}
-          renderItem={renderItem}
-          contentContainerStyle={styles.listContainer}
-          ItemSeparatorComponent={() => <View style={styles.separator} />}
-        />
+        {loading ? (
+          <ActivityIndicator size="large" color={COLORS.primary} style={{ marginTop: 40 }} />
+        ) : (
+          <FlatList
+            data={results}
+            keyExtractor={item => item._id}
+            renderItem={renderItem}
+            contentContainerStyle={styles.listContainer}
+            ItemSeparatorComponent={() => <View style={styles.separator} />}
+            ListEmptyComponent={() => (
+              <Text style={{ textAlign: 'center', color: COLORS.textLight, marginTop: 40 }}>
+                {searchQuery.trim() !== '' ? 'No parkings found.' : 'Start typing to search...'}
+              </Text>
+            )}
+          />
+        )}
       </View>
     </SafeAreaView>
   );
@@ -82,7 +106,6 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: COLORS.background,
-    paddingTop: Platform.OS === 'android' ? 35 : 0,
   },
   container: {
     flex: 1,

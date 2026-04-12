@@ -1,55 +1,48 @@
-import React from 'react';
-import { View, Text, StyleSheet, FlatList, Image, SafeAreaView, Platform, TouchableOpacity } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, FlatList, Image, Platform, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SIZES, SHADOWS } from '../theme';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useIsFocused } from '@react-navigation/native';
+import userService from '../services/userService';
 
-const savedLocations = [
-  {
-    id: '1',
-    name: 'Meme Parking',
-    address: '86th St, Near JN Road, Pune',
-    image: 'https://images.unsplash.com/photo-1590674899484-13da0d1b58f5?w=200&fit=crop'
-  },
-  {
-    id: '2',
-    name: 'Safe Parking',
-    address: '16 Avenue, Nr. Jawaharlal Nehru Rd, Pune',
-    image: 'https://images.unsplash.com/photo-1621245645607-bb561332f7cc?w=200&fit=crop'
-  },
-  {
-    id: '3',
-    name: 'Laxmi Parking Space',
-    address: '86th Street, Pune',
-    image: 'https://images.unsplash.com/photo-1573347101660-844cd93c2de8?w=200&fit=crop'
-  },
-  {
-    id: '4',
-    name: 'Let\'s Park',
-    address: '3rd Avenue, Court Rd, Pune',
-    image: 'https://images.unsplash.com/photo-1506521781263-d8422e82f27a?w=200&fit=crop'
-  },
-  {
-    id: '5',
-    name: 'Shiv Parking Lot',
-    address: '2nd Avenue, Court Rd, Pune',
-    image: 'https://images.unsplash.com/photo-1604061413812-70b86a3d6023?w=200&fit=crop'
-  }
-];
+// Default parking image if none provided
+const DEFAULT_IMAGE = "https://images.unsplash.com/photo-1590674899484-13da0d1b58f5?w=200&fit=crop";
 
 export default function SavedParkingScreen() {
   const navigation = useNavigation();
+  const isFocused = useIsFocused();
+  const [savedLocations, setSavedLocations] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (isFocused) {
+      loadSavedParkings();
+    }
+  }, [isFocused]);
+
+  const loadSavedParkings = async () => {
+    try {
+      setLoading(true);
+      const data = await userService.getSavedParkings();
+      setSavedLocations(data);
+    } catch (error) {
+      console.error("Error loading saved parkings:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const renderItem = ({ item }) => (
     <TouchableOpacity 
       style={styles.card} 
       activeOpacity={0.8}
-      onPress={() => navigation.navigate('ParkingDetails', { title: item.name })}
+      onPress={() => navigation.navigate('ParkingDetails', { parking: item })}
     >
-      <Image source={{ uri: item.image }} style={styles.cardImage} />
+      <Image source={{ uri: item.image || item.images?.[0] || DEFAULT_IMAGE }} style={styles.cardImage} />
       <View style={styles.cardInfo}>
         <Text style={styles.cardTitle}>{item.name}</Text>
-        <Text style={styles.cardAddress}>{item.address}</Text>
+        <Text style={styles.cardAddress}>{item.address || item.locationText}</Text>
       </View>
       <View style={styles.bookmarkIcon}>
         <Ionicons name="bookmark" size={24} color={COLORS.primary} />
@@ -61,13 +54,19 @@ export default function SavedParkingScreen() {
     <SafeAreaView style={styles.safeArea}>
       <Text style={styles.headerTitle}>Saved Parking</Text>
       
-      <FlatList
-        data={savedLocations}
-        keyExtractor={item => item.id}
-        renderItem={renderItem}
-        contentContainerStyle={styles.listContainer}
-        showsVerticalScrollIndicator={false}
-      />
+      {loading ? (
+        <ActivityIndicator size="large" color={COLORS.primary} style={{ marginTop: 50 }} />
+      ) : savedLocations.length === 0 ? (
+        <Text style={{ textAlign: 'center', marginTop: 50, color: COLORS.textMuted }}>No saved parkings found.</Text>
+      ) : (
+        <FlatList
+          data={savedLocations}
+          keyExtractor={item => item._id}
+          renderItem={renderItem}
+          contentContainerStyle={styles.listContainer}
+          showsVerticalScrollIndicator={false}
+        />
+      )}
     </SafeAreaView>
   );
 }
@@ -76,7 +75,6 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: '#FAFAFA',
-    paddingTop: Platform.OS === 'android' ? 25 : 0,
   },
   headerTitle: {
     fontSize: SIZES.h1,

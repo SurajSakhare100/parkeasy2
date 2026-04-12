@@ -1,24 +1,112 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity, SafeAreaView, Platform } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, Image, TouchableOpacity, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SIZES, SHADOWS } from '../theme';
 import FilterModal from '../components/FilterModal';
 import { useNavigation } from '@react-navigation/native';
+import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
+import * as Location from 'expo-location';
+import axios from 'axios';
+import parkingService from '../services/parkingService';
 
 export default function UserHomeScreen() {
   const [filterVisible, setFilterVisible] = useState(false);
+  const [location, setLocation] = useState(null);
+  const [errorMsg, setErrorMsg] = useState(null);
+  const [parkings, setParkings] = useState([]);
+  const [selectedParking, setSelectedParking] = useState(null);
+  const [region, setRegion] = useState({
+    latitude: 18.5204, // Default to Pune
+    longitude: 73.8567,
+    latitudeDelta: 0.05, // Slightly wider to show all 3 new locations
+    longitudeDelta: 0.05,
+  });
+
   const navigation = useNavigation();
+
+  useEffect(() => {
+    (async () => {
+      let { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        setErrorMsg('Permission to access location was denied');
+        return;
+      }
+
+      let currentLocation = await Location.getCurrentPositionAsync({});
+      setLocation(currentLocation);
+      // Only auto-center if we don't have parking spots yet or user wants to center
+    })();
+
+    fetchParkings();
+  }, []);
+
+  const fetchParkings = async () => {
+    try {
+      const data = await parkingService.getAllParkings();
+      setParkings(data);
+      if (data.length > 0) {
+        setSelectedParking(data[0]); // Select first one by default
+        // Center map on first parking
+        setRegion({
+          ...region,
+          latitude: data[0].location.coordinates[1],
+          longitude: data[0].location.coordinates[0],
+        });
+      }
+    } catch (error) {
+      // Error is already logged in api.js interceptor
+    }
+  };
+
+  const handleMarkerPress = (parking) => {
+    setSelectedParking(parking);
+    // Smoothly pan to the selected parking
+    setRegion({
+      ...region,
+      latitude: parking.location.coordinates[1],
+      longitude: parking.location.coordinates[0],
+    });
+  };
 
   return (
     <View style={styles.container}>
-      {/* Background Map Placeholder */}
-      <Image 
-        source={{ uri: 'https://images.unsplash.com/photo-1524661135-423995f22d0b?w=800&fit=crop' }} 
-        style={styles.mapBackgroundImage} 
-      />
-      
+      {/* Real Google Map */}
+      <MapView
+        provider={PROVIDER_GOOGLE}
+        style={styles.map}
+        initialRegion={region}
+        region={region}
+        showsUserLocation={true}
+        followsUserLocation={true}
+      >
+        {parkings.map((parking) => (
+          <Marker
+            key={parking._id}
+            coordinate={{
+              latitude: parking.location.coordinates[1],
+              longitude: parking.location.coordinates[0],
+            }}
+            onPress={() => handleMarkerPress(parking)}
+          >
+            <View style={[
+              styles.customMarker, 
+              selectedParking?._id === parking._id && styles.selectedMarker
+            ]}>
+              <Image 
+                source={require('../assets/parkicon.png')} 
+                style={styles.markerIcon} 
+              />
+              <View style={styles.pinPrice}>
+                <Text style={styles.pinPriceText}>₹{parking.pricePerHour}</Text>
+              </View>
+            </View>
+          </Marker>
+        ))}
+      </MapView>
+
       {/* Semi-transparent overlay to make elements pop */}
-      <View style={styles.mapOverlay} />
+      <View style={styles.mapOverlay} pointerEvents="none" />
 
       <SafeAreaView style={styles.safeArea}>
         {/* Top Header Section */}
@@ -29,14 +117,16 @@ export default function UserHomeScreen() {
             </View>
             <View>
               <Text style={styles.locationLabel}>Location</Text>
-              <Text style={styles.locationText}>Shivajinagar, Pune</Text>
+              <Text style={styles.locationText}>
+                {selectedParking ? selectedParking.name.split(' ')[0] : 'Pune'}, Maharashtra
+              </Text>
             </View>
             <TouchableOpacity style={styles.bellIcon}>
               <Ionicons name="notifications-outline" size={24} color={COLORS.text} />
             </TouchableOpacity>
           </View>
 
-          {/* Search Bar - Navigate to SearchScreen on Click */}
+          {/* Search Bar */}
           <View style={styles.searchContainer}>
             <TouchableOpacity 
               style={styles.searchInputMock} 
@@ -52,47 +142,51 @@ export default function UserHomeScreen() {
           </View>
         </View>
 
-        {/* Map Pins Mockup */}
-        <View style={[styles.pin, { top: '30%', left: '20%' }]}>
-          <Ionicons name="car" size={16} color={COLORS.oliveDark} />
-          <View style={styles.pinPrice}><Text style={styles.pinPriceText}>₹10</Text></View>
-        </View>
-        <View style={[styles.pin, { top: '50%', right: '30%' }]}>
-          <Ionicons name="car" size={16} color={COLORS.oliveDark} />
-          <View style={styles.pinPrice}><Text style={styles.pinPriceText}>₹10</Text></View>
-        </View>
-
         {/* Bottom Card Area */}
-        <View style={styles.bottomCardContainer}>
-          <View style={styles.parkingCard}>
-            <Image 
-              source={{ uri: 'https://images.unsplash.com/photo-1590674899484-13da0d1b58f5?w=400&fit=crop' }} 
-              style={styles.parkingImage} 
-            />
-            <View style={styles.cardHeader}>
-              <View>
-                <Text style={styles.cardTitle}>Meme Parking</Text>
-                <Text style={styles.cardAddress}>86th St, Near JN Road, Pune</Text>
+        {selectedParking && (
+          <View style={styles.bottomCardContainer}>
+            <TouchableOpacity 
+              style={styles.parkingCard}
+              activeOpacity={0.9}
+              onPress={() => navigation.navigate('ParkingDetails', { parking: selectedParking })}
+            >
+              <Image 
+                source={{ uri: 'https://images.unsplash.com/photo-1590674899484-13da0d1b58f5?w=400&fit=crop' }} 
+                style={styles.parkingImage} 
+              />
+              <View style={styles.cardHeader}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.cardTitle} numberOfLines={1}>{selectedParking.name}</Text>
+                  <Text style={styles.cardAddress} numberOfLines={1}>{selectedParking.address}</Text>
+                </View>
+                <View style={styles.ratingBadge}>
+                  <Ionicons name="star" size={16} color={COLORS.primary} />
+                  <Text style={styles.ratingText}>4.5</Text>
+                </View>
               </View>
-              <View style={styles.ratingBadge}>
-                <Ionicons name="star" size={16} color={COLORS.primary} />
-                <Text style={styles.ratingText}>4.5</Text>
-              </View>
-            </View>
 
-            <View style={styles.cardBottom}>
-              <Text style={styles.priceText}>₹10<Text style={styles.priceUnit}>/hr</Text></Text>
-              <View style={styles.actions}>
-                <TouchableOpacity style={styles.bookmarkBtn}>
-                  <Ionicons name="bookmark-outline" size={22} color={COLORS.primary} />
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.bookBtn} onPress={() => navigation.navigate('ParkingDetails', { title: 'Meme Parking' })}>
-                  <Text style={styles.bookBtnText}>Book Now</Text>
-                </TouchableOpacity>
+              <View style={styles.cardBottom}>
+                <View>
+                  <Text style={styles.priceText}>₹{selectedParking.pricePerHour}<Text style={styles.priceUnit}>/hr</Text></Text>
+                  <Text style={styles.availabilityText}>
+                    {selectedParking.availableSlots} spots left
+                  </Text>
+                </View>
+                <View style={styles.actions}>
+                  <TouchableOpacity style={styles.bookmarkBtn}>
+                    <Ionicons name="bookmark-outline" size={22} color={COLORS.primary} />
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={styles.bookBtn} 
+                    onPress={() => navigation.navigate('ParkingDetails', { parking: selectedParking })}
+                  >
+                    <Text style={styles.bookBtnText}>Book Now</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
-            </View>
+            </TouchableOpacity>
           </View>
-        </View>
+        )}
 
       </SafeAreaView>
 
@@ -112,17 +206,24 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  mapBackgroundImage: {
+  map: {
     ...StyleSheet.absoluteFillObject,
-    opacity: 0.6,
   },
   mapOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(255, 255, 255, 0.4)',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)', // Lighter overlay for better map visibility
+  },
+  customMarker: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  markerIcon: {
+    width: 35,
+    height: 35,
+    resizeMode: 'contain',
   },
   safeArea: {
     flex: 1,
-    paddingTop: Platform.OS === 'android' ? 35 : 0,
   },
   header: {
     paddingHorizontal: 20,
@@ -210,7 +311,7 @@ const styles = StyleSheet.create({
   },
   bottomCardContainer: {
     position: 'absolute',
-    bottom: Platform.OS === 'ios' ? 120 : 100,
+    bottom: 100,
     left: 20,
     right: 20,
   },
@@ -283,5 +384,14 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#333',
     fontSize: SIZES.font,
+  },
+  availabilityText: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 2,
+  },
+  selectedMarker: {
+    transform: [{ scale: 1.2 }],
+    zIndex: 99,
   }
 });

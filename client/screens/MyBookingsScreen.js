@@ -1,129 +1,200 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, SafeAreaView, Platform } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import React, { useState, useEffect, useCallback } from 'react';
+import {
+  View, Text, StyleSheet, TouchableOpacity, ScrollView,
+  Image, Platform, ActivityIndicator, RefreshControl
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { COLORS, SIZES, SHADOWS } from '../theme';
+import bookingService from '../services/bookingService';
 
-const activeBookings = [
-  {
-    id: '1',
-    title: 'Meme Parking',
-    address: '86th St, Near JN Road, Pune',
-    price: '₹10',
-    status: 'Now Active',
-    image: 'https://images.unsplash.com/photo-1590674899484-13da0d1b58f5?w=200&h=200&fit=crop'
-  },
-  {
-    id: '2',
-    title: 'Easy Park',
-    address: 'Police Training College, Pune',
-    price: '₹10',
-    status: 'Starts in 1hr',
-    image: 'https://images.unsplash.com/photo-1621245645607-bb561332f7cc?w=200&h=200&fit=crop'
-  }
-];
+const STATUS_CONFIG = {
+  booked: { label: 'Booked', bg: '#E8F5E9', text: '#2E7D32' },
+  active: { label: 'Active', bg: '#FFF9C4', text: '#6D5E08' },
+  pending_payment: { label: 'Incomplete', bg: '#FFF3E0', text: '#E65100' },
+  completed: { label: 'Completed', bg: '#F5F5F5', text: '#616161' },
+  cancelled: { label: 'Cancelled', bg: '#FFEBEE', text: '#C62828' },
+};
 
-const completedBookings = [
-  {
-    id: '3',
-    title: 'Avenue Parking',
-    address: '4th Avenue, S\'nagar, Pune',
-    price: '₹10',
-    status: 'Completed',
-    tag: 'Rate us',
-    image: 'https://images.unsplash.com/photo-1573347101660-844cd93c2de8?w=200&h=200&fit=crop'
-  },
-  {
-    id: '4',
-    title: 'Shri Ganesh Shade',
-    address: '10th Av, Shivajinagar, Pune',
-    price: '₹10',
-    status: 'Completed',
-    tag: 'Rate us',
-    image: 'https://images.unsplash.com/photo-1604061413812-70b86a3d6023?w=200&h=200&fit=crop'
-  }
-];
+function formatSlot(startTime, endTime) {
+  const s = new Date(startTime);
+  const e = new Date(endTime);
+  const toTime = (d) => d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+  const toDate = (d) => d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+  return `${toDate(s)}  ·  ${toTime(s)} → ${toTime(e)}`;
+}
 
 export default function MyBookingsScreen() {
+  const navigation = useNavigation();
   const [activeTab, setActiveTab] = useState('ACTIVE');
+  const [bookings, setBookings] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
-  const bookings = activeTab === 'ACTIVE' ? activeBookings : completedBookings;
+  const fetchBookings = async () => {
+    try {
+      const data = await bookingService.getMyBookings();
+      setBookings(data);
+    } catch (error) {
+      // API error already logged
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  // Refresh whenever this screen comes into focus (e.g., after a new booking)
+  useFocusEffect(
+    useCallback(() => {
+      setLoading(true);
+      fetchBookings();
+    }, [])
+  );
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchBookings();
+  };
+
+  const activeStatuses = ['booked', 'active', 'pending_payment'];
+  const completedStatuses = ['completed', 'cancelled'];
+
+  const filtered = bookings.filter((b) =>
+    activeTab === 'ACTIVE'
+      ? activeStatuses.includes(b.status)
+      : completedStatuses.includes(b.status)
+  );
 
   return (
     <SafeAreaView style={styles.container}>
-      <Text style={styles.headerTitle}>My Bookings</Text>
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+          <Ionicons name="arrow-back" size={22} color={COLORS.oliveDark} />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>My Bookings</Text>
+        <View style={{ width: 40 }} />
+      </View>
 
       {/* Toggle */}
       <View style={styles.toggleContainer}>
-        <TouchableOpacity 
-          style={[styles.toggleButton, activeTab === 'ACTIVE' && styles.toggleButtonActive]}
-          onPress={() => setActiveTab('ACTIVE')}
-        >
-          <Text style={[styles.toggleText, activeTab === 'ACTIVE' && styles.toggleTextActive]}>ACTIVE</Text>
-        </TouchableOpacity>
-        <TouchableOpacity 
-          style={[styles.toggleButton, activeTab === 'COMPLETED' && styles.toggleButtonActive]}
-          onPress={() => setActiveTab('COMPLETED')}
-        >
-          <Text style={[styles.toggleText, activeTab === 'COMPLETED' && styles.toggleTextActive]}>COMPLETED</Text>
-        </TouchableOpacity>
+        {['ACTIVE', 'COMPLETED'].map((tab) => (
+          <TouchableOpacity
+            key={tab}
+            style={[styles.toggleButton, activeTab === tab && styles.toggleButtonActive]}
+            onPress={() => setActiveTab(tab)}
+          >
+            <Text style={[styles.toggleText, activeTab === tab && styles.toggleTextActive]}>
+              {tab}
+            </Text>
+          </TouchableOpacity>
+        ))}
       </View>
 
       {/* List */}
-      <ScrollView contentContainerStyle={styles.listContainer} showsVerticalScrollIndicator={false}>
-        {bookings.map((item) => (
-          <View key={item.id} style={styles.card}>
-            <View style={styles.cardTop}>
-              <Image source={{ uri: item.image }} style={styles.cardImage} />
-              <View style={styles.cardInfo}>
-                <Text style={styles.cardTitle}>{item.title}</Text>
-                <Text style={styles.cardAddress}>{item.address}</Text>
-                <View style={styles.priceRow}>
-                  <Text style={styles.price}>{item.price}<Text style={styles.priceUnit}>/hr</Text></Text>
-                  
-                  {item.status === 'Now Active' && (
-                    <View style={styles.statusBadgeActive}>
-                      <Text style={styles.statusBadgeActiveText}>{item.status}</Text>
-                    </View>
-                  )}
-                  {item.status === 'Starts in 1hr' && (
-                    <View style={styles.statusBadgeOutline}>
-                      <Text style={styles.statusBadgeOutlineText}>{item.status}</Text>
-                    </View>
-                  )}
-                  {item.status === 'Completed' && (
-                    <>
-                      <View style={styles.statusBadgeOutline}>
-                        <Text style={styles.statusBadgeOutlineText}>{item.status}</Text>
+      {loading ? (
+        <View style={styles.centered}>
+          <ActivityIndicator size="large" color={COLORS.primary} />
+          <Text style={styles.loadingText}>Loading bookings…</Text>
+        </View>
+      ) : filtered.length === 0 ? (
+        <View style={styles.centered}>
+          <Ionicons name="car-outline" size={60} color={COLORS.border} />
+          <Text style={styles.emptyTitle}>No {activeTab.toLowerCase()} bookings</Text>
+          <Text style={styles.emptySubtitle}>Your bookings will appear here</Text>
+          <TouchableOpacity
+            style={styles.findParkingBtn}
+            onPress={() => navigation.navigate('Home')}
+          >
+            <Text style={styles.findParkingBtnText}>Find Parking</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <ScrollView
+          contentContainerStyle={styles.listContainer}
+          showsVerticalScrollIndicator={false}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.primary} />}
+        >
+          {filtered.map((item) => {
+            const statusCfg = STATUS_CONFIG[item.status] || STATUS_CONFIG.booked;
+            const parking = item.parkingId;
+            const imgUri = parking?.images?.[0] ||
+              'https://images.unsplash.com/photo-1590674899484-13da0d1b58f5?w=200&h=200&fit=crop';
+
+            return (
+              <View key={item._id} style={styles.card}>
+                <View style={styles.cardTop}>
+                  <Image source={{ uri: imgUri }} style={styles.cardImage} />
+                  <View style={styles.cardInfo}>
+                    <Text style={styles.cardTitle} numberOfLines={1}>
+                      {parking?.name || 'Parking'}
+                    </Text>
+                    <Text style={styles.cardAddress} numberOfLines={1}>
+                      {parking?.address || '—'}
+                    </Text>
+                    <Text style={styles.slotText} numberOfLines={1}>
+                      {formatSlot(item.startTime, item.endTime)}
+                    </Text>
+                    <View style={styles.priceRow}>
+                      <Text style={styles.price}>
+                        ₹{item.totalAmount}
+                        <Text style={styles.priceUnit}> total</Text>
+                      </Text>
+                      <View style={[styles.statusBadge, { backgroundColor: statusCfg.bg }]}>
+                        <Text style={[styles.statusBadgeText, { color: statusCfg.text }]}>
+                          {statusCfg.label}
+                        </Text>
                       </View>
-                      {item.tag && (
-                        <View style={styles.statusBadgeRate}>
-                          <Text style={styles.statusBadgeRateText}>{item.tag}</Text>
-                        </View>
-                      )}
-                    </>
+                    </View>
+                  </View>
+                </View>
+
+                <View style={styles.divider} />
+
+                <View style={styles.actionRow}>
+                  <TouchableOpacity
+                    style={styles.btnOutline}
+                    onPress={() => navigation.navigate('Ticket', {
+                      booking: {
+                        id: item._id,
+                        parkingName: parking?.name,
+                        address: parking?.address,
+                        vehicleType: item.vehicleType,
+                        startTime: item.startTime,
+                        endTime: item.endTime,
+                        totalAmount: item.totalAmount,
+                        qrCode: item.qrCode,
+                        qrCodeImage: item.qrCodeImage,
+                        status: item.status,
+                      }
+                    })}
+                  >
+                    <Ionicons name="qr-code-outline" size={15} color={COLORS.olive} style={{ marginRight: 5 }} />
+                    <Text style={styles.btnOutlineText}>View Ticket</Text>
+                  </TouchableOpacity>
+
+                  {activeTab === 'ACTIVE' ? (
+                    <TouchableOpacity
+                      style={styles.btnSolid}
+                      onPress={() => navigation.navigate('ParkingDetails', { parking })}
+                    >
+                      <Text style={styles.btnSolidText}>View Details</Text>
+                    </TouchableOpacity>
+                  ) : (
+                    <TouchableOpacity
+                      style={styles.btnSolid}
+                      onPress={() => navigation.navigate('ParkingDetails', { parking })}
+                    >
+                      <Text style={styles.btnSolidText}>Book Again</Text>
+                    </TouchableOpacity>
                   )}
                 </View>
               </View>
-            </View>
-
-            <View style={styles.divider} />
-
-            <View style={styles.actionRow}>
-              <TouchableOpacity style={styles.btnOutline}>
-                <Text style={styles.btnOutlineText}>View Ticket</Text>
-              </TouchableOpacity>
-              
-              {activeTab === 'ACTIVE' ? (
-                <TouchableOpacity style={styles.btnSolid}>
-                  <Text style={styles.btnSolidText}>View Timer</Text>
-                </TouchableOpacity>
-              ) : (
-                <TouchableOpacity style={styles.btnSolid}>
-                  <Text style={styles.btnSolidText}>Book Again</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-          </View>
-        ))}
-      </ScrollView>
+            );
+          })}
+        </ScrollView>
+      )}
     </SafeAreaView>
   );
 }
@@ -131,170 +202,126 @@ export default function MyBookingsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
-    paddingTop: Platform.OS === 'android' ? 25 : 0, // safe area padding
+    backgroundColor: '#F8F7F2',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    backgroundColor: '#FFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#EEE',
+  },
+  backBtn: {
+    width: 40, height: 40, borderRadius: 20,
+    backgroundColor: '#F5F5F5',
+    justifyContent: 'center', alignItems: 'center',
   },
   headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    marginVertical: 20,
-    color: '#4C4223', // Matches the dark brown/olive title color
+    flex: 1, textAlign: 'center',
+    fontSize: SIZES.large, fontWeight: 'bold', color: COLORS.oliveDark,
   },
   toggleContainer: {
     flexDirection: 'row',
     marginHorizontal: 20,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#9E9E9E',
-    backgroundColor: '#FFFFFF',
-    marginBottom: 20,
+    marginVertical: 16,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: COLORS.border,
+    backgroundColor: '#FFF',
+    overflow: 'hidden',
   },
   toggleButton: {
-    flex: 1,
-    paddingVertical: 12,
-    alignItems: 'center',
-    borderRadius: 7,
+    flex: 1, paddingVertical: 12, alignItems: 'center',
   },
   toggleButtonActive: {
-    backgroundColor: '#FBD427', // Bright yellow
+    backgroundColor: COLORS.primary,
   },
   toggleText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#8E8E93',
+    fontSize: SIZES.font, fontWeight: '700', color: COLORS.textLight,
   },
   toggleTextActive: {
-    color: '#4C4223', 
+    color: COLORS.oliveDark,
+  },
+  centered: {
+    flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 40,
+  },
+  loadingText: {
+    marginTop: 12, color: COLORS.textLight, fontSize: SIZES.font,
+  },
+  emptyTitle: {
+    marginTop: 16, fontSize: SIZES.large, fontWeight: 'bold', color: COLORS.oliveDark,
+  },
+  emptySubtitle: {
+    marginTop: 6, fontSize: SIZES.font, color: COLORS.textLight, textAlign: 'center',
+  },
+  findParkingBtn: {
+    marginTop: 24, backgroundColor: COLORS.primary,
+    paddingHorizontal: 28, paddingVertical: 12, borderRadius: 10,
+  },
+  findParkingBtnText: {
+    fontSize: SIZES.font, fontWeight: 'bold', color: COLORS.oliveDark,
   },
   listContainer: {
-    paddingHorizontal: 20,
-    paddingBottom: 120, // ample space for the floating bottom nav
+    paddingHorizontal: 20, paddingBottom: 100,
   },
   card: {
-    borderWidth: 1,
-    borderColor: '#EFEFEF',
-    borderRadius: 14,
-    padding: 15,
-    marginBottom: 20,
-    backgroundColor: '#FFFFFF',
-    // slight shadow for floating effect
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 10,
-    elevation: 2,
+    borderWidth: 1, borderColor: '#EFEFEF', borderRadius: 16,
+    padding: 15, marginBottom: 16, backgroundColor: '#FFF', ...SHADOWS.light,
   },
   cardTop: {
-    flexDirection: 'row',
-    marginBottom: 15,
+    flexDirection: 'row', marginBottom: 14,
   },
   cardImage: {
-    width: 70,
-    height: 70,
-    borderRadius: 10,
-    marginRight: 15,
-    backgroundColor: '#EEE',
+    width: 72, height: 72, borderRadius: 12, marginRight: 14, backgroundColor: '#EEE',
   },
   cardInfo: {
-    flex: 1,
-    justifyContent: 'center',
+    flex: 1, justifyContent: 'center',
   },
   cardTitle: {
-    fontSize: 17,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 4,
+    fontSize: SIZES.medium, fontWeight: 'bold', color: '#333', marginBottom: 3,
   },
   cardAddress: {
-    fontSize: 13,
-    color: '#A0A0A0',
-    marginBottom: 8,
+    fontSize: 12, color: COLORS.textLight, marginBottom: 4,
+  },
+  slotText: {
+    fontSize: 11, color: COLORS.textMuted, marginBottom: 6,
   },
   priceRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexWrap: 'wrap',
+    flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap',
   },
   price: {
-    fontSize: 15,
-    fontWeight: 'bold',
-    color: '#95822E', // Olive price format
-    marginRight: 10,
+    fontSize: SIZES.font, fontWeight: 'bold', color: COLORS.olive,
   },
   priceUnit: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#A0A0A0',
+    fontSize: 12, fontWeight: '600', color: COLORS.textLight,
   },
-  statusBadgeActive: {
-    backgroundColor: '#DECD64',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
+  statusBadge: {
+    paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6,
   },
-  statusBadgeActiveText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#333',
-  },
-  statusBadgeOutline: {
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
-    marginRight: 6,
-  },
-  statusBadgeOutlineText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#333',
-  },
-  statusBadgeRate: {
-    backgroundColor: '#E7DC81',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
-  },
-  statusBadgeRateText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#6e5e1d',
+  statusBadgeText: {
+    fontSize: 11, fontWeight: '700',
   },
   divider: {
-    height: 1,
-    backgroundColor: '#F4F4F4',
-    marginBottom: 15,
+    height: 1, backgroundColor: '#F4F4F4', marginBottom: 12,
   },
   actionRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: 'row', justifyContent: 'space-between', gap: 10,
   },
   btnOutline: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: '#9E9E9E',
-    borderRadius: 8,
-    paddingVertical: 10,
-    alignItems: 'center',
-    marginRight: 10,
+    flex: 1, borderWidth: 1.5, borderColor: COLORS.primary,
+    borderRadius: 10, paddingVertical: 10,
+    alignItems: 'center', flexDirection: 'row', justifyContent: 'center',
   },
   btnOutlineText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#9E9E9E',
+    fontSize: SIZES.font, fontWeight: '700', color: COLORS.olive,
   },
   btnSolid: {
-    flex: 1,
-    backgroundColor: '#FBD427',
-    borderRadius: 8,
-    paddingVertical: 10,
-    alignItems: 'center',
+    flex: 1, backgroundColor: COLORS.primary,
+    borderRadius: 10, paddingVertical: 10, alignItems: 'center',
   },
   btnSolidText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#4C4223',
-  }
+    fontSize: SIZES.font, fontWeight: '700', color: COLORS.oliveDark,
+  },
 });

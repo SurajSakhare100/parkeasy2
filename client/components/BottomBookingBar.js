@@ -1,16 +1,32 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Platform, ActivityIndicator } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SIZES, SHADOWS } from '../theme';
 
-export default function BottomBookingBar({ price }) {
+export default function BottomBookingBar({ price, onBookNow, loading = false }) {
   return (
     <View style={styles.container}>
       <View style={styles.content}>
         <View style={styles.priceContainer}>
-          <Text style={styles.priceText}>{price}<Text style={styles.priceUnit}>/hr</Text></Text>
+          <Text style={styles.priceLabel}>Price</Text>
+          <Text style={styles.priceText}>
+            {price}<Text style={styles.priceUnit}>/hr</Text>
+          </Text>
         </View>
-        <TouchableOpacity style={styles.bookBtn}>
-          <Text style={styles.bookBtnText}>Book Now</Text>
+        <TouchableOpacity
+          style={[styles.bookBtn, loading && { opacity: 0.7 }]}
+          onPress={onBookNow}
+          disabled={loading}
+          activeOpacity={0.85}
+        >
+          {loading ? (
+            <ActivityIndicator color={COLORS.oliveDark} />
+          ) : (
+            <>
+              <Ionicons name="calendar-outline" size={18} color={COLORS.oliveDark} style={{ marginRight: 8 }} />
+              <Text style={styles.bookBtnText}>Book Now</Text>
+            </>
+          )}
         </TouchableOpacity>
       </View>
     </View>
@@ -23,23 +39,33 @@ const styles = StyleSheet.create({
     bottom: 0,
     width: '100%',
     backgroundColor: '#FFF',
-    paddingTop: 15,
-    paddingBottom: Platform.OS === 'ios' ? 35 : 20,
+    paddingTop: 14,
+    paddingBottom: Platform.OS === 'ios' ? 34 : 100,
     paddingHorizontal: 20,
+    borderTopWidth: 1,
+    borderTopColor: '#EFEFEF',
+    ...SHADOWS.medium,
   },
   content: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 12,
+    gap: 12,
   },
   priceContainer: {
-    flex: 1,
-    backgroundColor: '#EAE5CD', // light sand background
-    paddingVertical: 18,
-    borderTopLeftRadius: 10,
-    borderBottomLeftRadius: 10,
+    backgroundColor: '#EAE5CD',
+    paddingVertical: 14,
+    paddingHorizontal: 18,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  priceLabel: {
+    fontSize: 10,
+    color: '#8E6F2A',
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 2,
   },
   priceText: {
     fontSize: SIZES.large,
@@ -52,17 +78,18 @@ const styles = StyleSheet.create({
     fontWeight: 'normal',
   },
   bookBtn: {
-    flex: 2,
+    flex: 1,
     backgroundColor: COLORS.primary,
-    paddingVertical: 18,
-    borderTopRightRadius: 10,
-    borderBottomRightRadius: 10,
+    paddingVertical: 16,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
+    flexDirection: 'row',
+    ...SHADOWS.light,
   },
   bookBtnText: {
     fontSize: SIZES.medium,
     fontWeight: 'bold',
-    color: '#4C4223',
-  }
+    color: COLORS.oliveDark,
+  },
 });

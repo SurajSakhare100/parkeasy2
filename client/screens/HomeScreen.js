@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Button, SafeAreaView, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Button, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import MyBookingsScreen from './MyBookingsScreen';
@@ -7,36 +7,7 @@ import UserHomeScreen from './UserHomeScreen';
 import SavedParkingScreen from './SavedParkingScreen';
 
 // Placeholder Screens
-// Inline placeholder for profile
-const ProfileScreen = ({ navigation }) => {
-  const [token, setToken] = useState('');
-
-  useEffect(() => {
-    const fetchToken = async () => {
-      const storedToken = await AsyncStorage.getItem('userToken');
-      setToken(storedToken);
-    };
-    fetchToken();
-  }, []);
-
-  const handleLogout = async () => {
-    await AsyncStorage.removeItem('userToken');
-    navigation.navigate('Login');
-  };
-
-  return (
-    <View style={styles.screen}>
-      <Text style={styles.screenTitle}>Profile</Text>
-      <Text style={styles.text}>You have successfully authenticated.</Text>
-      <Text style={styles.tokenText}>
-        Token: {token ? `${token.substring(0, 20)}...` : 'None'}
-      </Text>
-      <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
-        <Text style={styles.logoutText}>Logout Out</Text>
-      </TouchableOpacity>
-    </View>
-  );
-};
+import ProfileScreen from './ProfileScreen';
 
 export default function HomeScreen({ navigation }) {
   // Using 1 for Bookings as in the screenshot, the highlighted item is the 2nd one.

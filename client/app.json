@@ -1,13 +1,31 @@
 {
   "expo": {
-    "name": "client",
-    "slug": "client",
+    "name": "parkEasy",
+    "slug": "parkEasy",
     "version": "1.0.0",
     "sdkVersion": "54.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.parkeasy.client",
+      "config": {
+        "googleMapsApiKey": "YOUR_GOOGLE_MAPS_API_KEY_HERE"
+      }
+    },
+    "android": {
+      "package": "com.parkeasy.client",
+      "config": {
+        "googleMaps": {
+          "apiKey": "YOUR_GOOGLE_MAPS_API_KEY_HERE"
+        }
+      }
+    },
+    "icon": "./assets/parkicon.png",
+    "splash": {
+      "image": "./assets/parkicon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#FFFFFF"
     }
   }
 }

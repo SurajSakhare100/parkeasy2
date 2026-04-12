@@ -1,58 +1,115 @@
-import React from 'react';
-import { View, StyleSheet, ScrollView } from 'react-native';
-import { useRoute } from '@react-navigation/native';
+import React, { useState, useEffect } from 'react';
+import { View, StyleSheet, ScrollView, Platform, TouchableOpacity } from 'react-native';
+import { useRoute, useNavigation } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../theme';
+import userService from '../services/userService';
 
 import DetailsHeaderCarousel from '../components/DetailsHeaderCarousel';
 import DetailsInfoSection from '../components/DetailsInfoSection';
 import OwnerContactCard from '../components/OwnerContactCard';
 import BottomBookingBar from '../components/BottomBookingBar';
 
-const dummyDetails = {
-  title: 'Meme Parking',
-  address: '86th St, Near JN Road, Pune',
-  rating: 4.5,
-  distance: '500m',
-  time: '7:00 am - 11:00 pm',
-  about: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Etiam eu turpis molestie, dictum est a, mattis tellus. Sed dignissim, metus nec fringilla accumsan, risus sem sollicitudin lacus, ut interdum tellus elit sed risus.',
-  ownerName: 'Xavier',
-  ownerAvatar: 'https://images.unsplash.com/photo-1599566150163-29194dcaad36?w=200&fit=crop',
-  price: '₹10',
-  images: [
-    'https://images.unsplash.com/photo-1590674899484-13da0d1b58f5?w=800&fit=crop',
-    'https://images.unsplash.com/photo-1621245645607-bb561332f7cc?w=800&fit=crop'
-  ]
-};
+const FALLBACK_IMAGES = [
+  'https://images.unsplash.com/photo-1590674899484-13da0d1b58f5?w=800&fit=crop',
+  'https://images.unsplash.com/photo-1621245645607-bb561332f7cc?w=800&fit=crop',
+];
 
 export default function ParkingDetailsScreen() {
   const route = useRoute();
-  
-  // We can pick up the 'title' parameter if passed from Home/Search
-  const viewTitle = route.params?.title || dummyDetails.title;
+  const navigation = useNavigation();
+
+  // 'parking' passed from HomeScreen / SearchScreen markers
+  const parking = route.params?.parking;
+
+  const [isBookmarked, setIsBookmarked] = useState(false);
+  const [loadingBookmark, setLoadingBookmark] = useState(false);
+
+  useEffect(() => {
+    // Check if it's already saved by checking current user's saved parkings. 
+    // For a real app, you might pass it down or quickly fetch status here.
+    // For now we'll fetch profile to set initial state
+    const checkSavedStatus = async () => {
+      try {
+        if (!parking?._id) return;
+        const saved = await userService.getSavedParkings();
+        if (saved.some(p => p._id === parking._id)) {
+          setIsBookmarked(true);
+        }
+      } catch (err) {
+        console.log(err);
+      }
+    };
+    checkSavedStatus();
+  }, [parking]);
+
+  const handleToggleBookmark = async () => {
+    if (!parking?._id) return;
+    try {
+      setLoadingBookmark(true);
+      await userService.toggleSavedParking(parking._id);
+      setIsBookmarked(!isBookmarked);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoadingBookmark(false);
+    }
+  };
+
+  const details = {
+    title: parking?.name || 'Parking Spot',
+    address: parking?.address || '—',
+    rating: 4.5,
+    distance: '500m',
+    time: parking?.operatingHours || '7:00 am - 11:00 pm',
+    about: parking?.description || 'A convenient and secure parking space. Check availability before booking.',
+    ownerName: parking?.ownerName || 'ParkEasy',
+    ownerAvatar: 'https://images.unsplash.com/photo-1599566150163-29194dcaad36?w=200&fit=crop',
+    price: `₹${parking?.pricePerHour ?? '—'}`,
+    images: (parking?.images?.length > 0) ? parking.images : FALLBACK_IMAGES,
+  };
+
+  const handleBookNow = () => {
+    if (!parking) return;
+    navigation.navigate('Booking', { parking });
+  };
 
   return (
     <View style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         
-        <DetailsHeaderCarousel images={dummyDetails.images} />
+        <DetailsHeaderCarousel images={details.images} />
         
         <DetailsInfoSection 
-          title={viewTitle}
-          address={dummyDetails.address}
-          rating={dummyDetails.rating}
-          distance={dummyDetails.distance}
-          time={dummyDetails.time}
-          about={dummyDetails.about}
+          title={details.title}
+          address={details.address}
+          rating={details.rating}
+          distance={details.distance}
+          time={details.time}
+          about={details.about}
         />
 
         <OwnerContactCard 
-          ownerName={dummyDetails.ownerName}
-          ownerAvatar={dummyDetails.ownerAvatar}
+          ownerName={details.ownerName}
+          ownerAvatar={details.ownerAvatar}
         />
 
       </ScrollView>
+
+      {/* Floating Bookmark icon */}
+      <TouchableOpacity 
+        style={styles.bookmarkButton} 
+        onPress={handleToggleBookmark}
+        disabled={loadingBookmark}
+      >
+        <Ionicons 
+          name={isBookmarked ? "bookmark" : "bookmark-outline"} 
+          size={24} 
+          color={COLORS.primary} 
+        />
+      </TouchableOpacity>
       
-      <BottomBookingBar price={dummyDetails.price} />
+      <BottomBookingBar price={details.price} onBookNow={handleBookNow} />
     </View>
   );
 }
@@ -64,5 +121,16 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingBottom: 20, 
+  },
+  bookmarkButton: {
+    position: 'absolute',
+    top: 30, // aligning roughly with back button from carousel
+    right: 20,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
   }
 });

@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import bcrypt from "bcryptjs";
 
 const { Schema, model } = mongoose;
 
@@ -8,20 +9,37 @@ const userSchema = new Schema(
       type: String,
       trim: true,
     },
+    email: {
+      type: String,
+      unique: true,
+      lowercase: true,
+      trim: true,
+      sparse: true, // Allows null/missing values while still being unique if present
+    },
+    password: {
+      type: String,
+      minlength: 6,
+    },
     phone: {
       type: String,
-      required: true,
       unique: true,
+      sparse: true,
     },
     role: {
       type: String,
       enum: ["customer", "owner"],
-      required: true,
+      default: "customer",
     },
     vehicleType: [
       {
         type: String,
         enum: ["car", "bike"],
+      },
+    ],
+    savedParkings: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "Parking",
       },
     ],
     isVerified: {
@@ -31,5 +49,11 @@ const userSchema = new Schema(
   },
   { timestamps: true }
 );
+
+// Method to compare password
+userSchema.methods.comparePassword = async function (candidatePassword) {
+  if (!this.password) return false;
+  return bcrypt.compare(candidatePassword, this.password);
+};
 
 export default model("User", userSchema);

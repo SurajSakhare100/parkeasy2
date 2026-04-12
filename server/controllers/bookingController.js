@@ -140,3 +140,77 @@ export const cancelBooking = async (req, res) => {
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
+
+/**
+ * GET /api/booking/owner/bookings
+ * Get owner bookings mapped to their parkings
+ */
+export const getOwnerBookings = async (req, res) => {
+  try {
+    const ownerId = req.user.userId;
+    const { filter } = req.query;
+
+    const parkings = await Parking.find({ ownerId }).select('_id');
+    const parkingIds = parkings.map(p => p._id);
+
+    let dateQuery = {};
+    const now = new Date();
+    
+    if (filter === 'today') {
+      const startOfToday = new Date(now.setHours(0,0,0,0));
+      dateQuery = { createdAt: { $gte: startOfToday } };
+    } else if (filter === 'yesterday') {
+      const startOfYesterday = new Date(new Date().setHours(0,0,0,0));
+      startOfYesterday.setDate(startOfYesterday.getDate() - 1);
+      const endOfYesterday = new Date(startOfYesterday);
+      endOfYesterday.setDate(endOfYesterday.getDate() + 1);
+      dateQuery = { createdAt: { $gte: startOfYesterday, $lt: endOfYesterday } };
+    } else if (filter === 'month') {
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      dateQuery = { createdAt: { $gte: startOfMonth } };
+    }
+
+    const bookings = await Booking.find({
+      parkingId: { $in: parkingIds },
+      ...dateQuery
+    })
+    .populate("parkingId", "name address")
+    .populate("userId", "name email")
+    .sort({ createdAt: -1 });
+
+    res.status(200).json(bookings);
+  } catch (error) {
+    console.error("Owner bookings error:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+/**
+ * GET /api/booking/owner/analytics
+ */
+export const getOwnerAnalytics = async (req, res) => {
+  try {
+    const ownerId = req.user.userId;
+    const parkings = await Parking.find({ ownerId });
+    const parkingIds = parkings.map(p => p._id);
+    
+    const bookings = await Booking.find({ parkingId: { $in: parkingIds } });
+    
+    let totalRevenue = 0;
+    bookings.forEach(b => {
+      if (b.status !== 'cancelled') {
+        totalRevenue += (b.totalAmount || 0);
+      }
+    });
+
+    res.status(200).json({
+      totalRevenue,
+      totalBookings: bookings.length,
+      totalParkings: parkings.length,
+      activeSpots: parkings.filter(p => p.isActive).length
+    });
+  } catch (error) {
+     console.error("Analytics error:", error);
+     res.status(500).json({ message: "Server error", error: error.message });
+  }
+};

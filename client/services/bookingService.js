@@ -32,6 +32,22 @@ const bookingService = {
     const res = await api.put(`/booking/${bookingId}/cancel`);
     return res.data;
   },
+
+  /**
+   * Get all bookings for owner
+   */
+  getOwnerBookings: async (filter = '') => {
+    const res = await api.get(`/booking/owner/bookings?filter=${filter}`);
+    return res.data;
+  },
+
+  /**
+   * Get analytics for owner
+   */
+  getOwnerAnalytics: async () => {
+    const res = await api.get('/booking/owner/analytics');
+    return res.data;
+  },
 };
 
 export default bookingService;

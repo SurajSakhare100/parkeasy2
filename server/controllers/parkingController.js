@@ -79,3 +79,82 @@ export const searchParkings = async (req, res) => {
     });
   }
 };
+
+/**
+ * Get parkings for the logged in owner
+ */
+export const getOwnerParkings = async (req, res) => {
+  try {
+    const ownerId = req.user.userId;
+    const parkings = await Parking.find({ ownerId });
+    res.status(200).json(parkings);
+  } catch (error) {
+    res.status(500).json({ message: "Error fetching owner parkings" });
+  }
+};
+
+/**
+ * Update a parking spot
+ */
+export const updateParking = async (req, res) => {
+  try {
+    const ownerId = req.user.userId;
+    const { id } = req.params;
+
+    const parking = await Parking.findOneAndUpdate(
+      { _id: id, ownerId },
+      { $set: req.body },
+      { new: true, runValidators: true }
+    );
+
+    if (!parking) return res.status(404).json({ message: "Parking not found or unauthorized" });
+
+    res.status(200).json(parking);
+  } catch (error) {
+    res.status(500).json({ message: "Error updating parking" });
+  }
+};
+
+/**
+ * Delete a parking spot
+ */
+export const deleteParking = async (req, res) => {
+  try {
+    const ownerId = req.user.userId;
+    const { id } = req.params;
+
+    const parking = await Parking.findOneAndDelete({ _id: id, ownerId });
+    if (!parking) return res.status(404).json({ message: "Parking not found or unauthorized" });
+
+    res.status(200).json({ message: "Parking deleted successfully" });
+  } catch (error) {
+    res.status(500).json({ message: "Error deleting parking" });
+  }
+};
+
+/**
+ * Create a parking spot
+ */
+export const createParking = async (req, res) => {
+  try {
+    const ownerId = req.user.userId;
+    const { name, address, location, totalSlots, pricePerHour, vehicleType } = req.body;
+
+    const newParking = new Parking({
+      ownerId,
+      name,
+      address,
+      location,
+      totalSlots,
+      availableSlots: totalSlots,
+      pricePerHour,
+      vehicleType
+    });
+
+    const savedParking = await newParking.save();
+    res.status(201).json(savedParking);
+  } catch (error) {
+    console.error("Create parking error:", error);
+    res.status(500).json({ message: "Error creating parking", error: error.message });
+  }
+};

@@ -27,6 +27,38 @@ const parkingService = {
     });
     return response.data;
   },
+  
+  /**
+   * Get all parkings belonging to logged in owner
+   */
+  getOwnerParkings: async () => {
+    const response = await api.get('/parking/owner');
+    return response.data;
+  },
+
+  /**
+   * Create new parking
+   */
+  createParking: async (data) => {
+    const response = await api.post('/parking', data);
+    return response.data;
+  },
+
+  /**
+   * Update owner's parking details
+   */
+  updateParking: async (id, data) => {
+    const response = await api.put(`/parking/${id}`, data);
+    return response.data;
+  },
+
+  /**
+   * Delete owner's parking
+   */
+  deleteParking: async (id) => {
+    const response = await api.delete(`/parking/${id}`);
+    return response.data;
+  }
 };
 
 export default parkingService;

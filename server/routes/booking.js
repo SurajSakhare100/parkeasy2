@@ -4,6 +4,8 @@ import {
   getMyBookings,
   getBookingById,
   cancelBooking,
+  getOwnerBookings,
+  getOwnerAnalytics
 } from "../controllers/bookingController.js";
 import { protect } from "../middleware/auth.js";
 
@@ -20,5 +22,11 @@ router.get("/:bookingId", protect, getBookingById);
 
 // PUT /api/booking/:bookingId/cancel
 router.put("/:bookingId/cancel", protect, cancelBooking);
+
+// GET /api/booking/owner/bookings
+router.get("/owner/bookings", protect, getOwnerBookings);
+
+// GET /api/booking/owner/analytics
+router.get("/owner/analytics", protect, getOwnerAnalytics);
 
 export default router;

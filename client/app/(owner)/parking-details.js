@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -32,9 +32,23 @@ export default function OwnerParkingDetailsScreen() {
             </View>
 
             <ScrollView contentContainerStyle={styles.content}>
-                <View style={styles.imagePlaceholder}>
-                    <Ionicons name="car-sport" size={60} color="#E0E0E0" />
-                </View>
+                {parking.images && parking.images.length > 0 ? (
+                    <ScrollView 
+                        horizontal 
+                        pagingEnabled 
+                        showsHorizontalScrollIndicator={false} 
+                        style={styles.carouselContainer}
+                        contentContainerStyle={styles.carouselContent}
+                    >
+                        {parking.images.map((img, i) => (
+                            <Image key={i} source={{ uri: img }} style={styles.carouselImage} />
+                        ))}
+                    </ScrollView>
+                ) : (
+                    <View style={styles.imagePlaceholder}>
+                        <Ionicons name="car-sport" size={60} color="#E0E0E0" />
+                    </View>
+                )}
 
                 <View style={styles.infoCard}>
                     <Text style={styles.title}>{parking.name}</Text>
@@ -86,6 +100,20 @@ const styles = StyleSheet.create({
         width: '100%', height: 180, backgroundColor: '#FFF', borderRadius: 14,
         justifyContent: 'center', alignItems: 'center', marginBottom: 20,
         borderWidth: 1, borderColor: '#EEE'
+    },
+    carouselContainer: {
+        marginBottom: 20,
+    },
+    carouselContent: {
+        alignItems: 'center',
+    },
+    carouselImage: {
+        width: Dimensions.get('window').width - 40, // padding adjustment
+        height: 200, 
+        borderRadius: 14, 
+        marginRight: 10,
+        borderWidth: 1, 
+        borderColor: '#EEE'
     },
     infoCard: {
         backgroundColor: '#FFF', borderRadius: 14, padding: 20, marginBottom: 20,

@@ -111,7 +111,8 @@ export const updateParking = async (req, res) => {
 
     res.status(200).json(parking);
   } catch (error) {
-    res.status(500).json({ message: "Error updating parking" });
+    console.error("Update parking error:", error);
+    res.status(500).json({ message: "Error updating parking", error: error.message });
   }
 };
 

@@ -4,8 +4,8 @@ const bookingService = {
   /**
    * Create a new booking (returns bookingId + totalAmount)
    */
-  createBooking: async ({ parkingId, vehicleType, startTime, endTime }) => {
-    const res = await api.post('/booking/create', { parkingId, vehicleType, startTime, endTime });
+  createBooking: async ({ parkingId, vehicleType, startTime, endTime, spotName }) => {
+    const res = await api.post('/booking/create', { parkingId, vehicleType, startTime, endTime, spotName });
     return res.data;
   },
 

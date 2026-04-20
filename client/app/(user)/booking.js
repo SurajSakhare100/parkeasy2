@@ -1,9 +1,10 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
-  Alert, ActivityIndicator, TextInput, Platform
+  Alert, ActivityIndicator, Platform
 } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -21,7 +22,6 @@ const DURATION_OPTIONS = [
   { label: '3 hrs', hours: 3 },
   { label: '4 hrs', hours: 4 },
   { label: '6 hrs', hours: 6 },
-  { label: '8 hrs', hours: 8 },
   { label: '12 hrs', hours: 12 },
   { label: '24 hrs', hours: 24 },
 ];
@@ -53,32 +53,38 @@ export default function BookingScreen() {
   const [selectedSlot, setSelectedSlot] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  // Custom Date Picking Logic
-  const today = new Date();
-  const next7Days = useMemo(() => {
-      const days = [];
-      for(let i=0; i<7; i++) {
-          const d = new Date();
-          d.setDate(today.getDate() + i);
-          days.push(d);
-      }
-      return days;
-  }, []);
+  // Date & Time states
+  const [startDate, setStartDate] = useState(new Date());
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showTimePicker, setShowTimePicker] = useState(false);
 
-  const [selectedDate, setSelectedDate] = useState(next7Days[0]);
-  const [inputHour, setInputHour] = useState(today.getHours().toString().padStart(2, '0'));
-  const [inputMinute, setInputMinute] = useState(today.getMinutes().toString().padStart(2, '0'));
-
-  const startTime = useMemo(() => {
-      const start = new Date(selectedDate);
-      start.setHours(parseInt(inputHour) || 0, parseInt(inputMinute) || 0, 0, 0);
-      return start;
-  }, [selectedDate, inputHour, inputMinute]);
-
+  const startTime = startDate;
   const endTime = new Date(startTime.getTime() + selectedHours * 60 * 60 * 1000);
   const totalAmount = Math.ceil(selectedHours * parking.pricePerHour);
 
+  const onDateChange = (event, selected) => {
+    setShowDatePicker(Platform.OS === 'ios');
+    if (selected) {
+      const newDate = new Date(startDate);
+      newDate.setFullYear(selected.getFullYear(), selected.getMonth(), selected.getDate());
+      setStartDate(newDate);
+    }
+  };
+
+  const onTimeChange = (event, selected) => {
+    setShowTimePicker(Platform.OS === 'ios');
+    if (selected) {
+      const newDate = new Date(startDate);
+      newDate.setHours(selected.getHours(), selected.getMinutes());
+      setStartDate(newDate);
+    }
+  };
+
   const handleProceedToPayment = async () => {
+    if (!selectedSlot) {
+      Alert.alert("Select a Spot", "Please select a specific parking spot to continue.");
+      return;
+    }
     if (startTime < new Date()) {
         Alert.alert("Invalid Time", "Booking time cannot be in the past.");
         return;
@@ -89,6 +95,7 @@ export default function BookingScreen() {
       const result = await bookingService.createBooking({
         parkingId: parking._id,
         vehicleType,
+        spotName: selectedSlot,
         startTime: startTime.toISOString(),
         endTime: endTime.toISOString(),
       });
@@ -101,6 +108,7 @@ export default function BookingScreen() {
           durationHours: result.durationHours,
           parking: JSON.stringify(parking),
           vehicleType,
+          spotName: selectedSlot,
           startTime: startTime.toISOString(),
           endTime: endTime.toISOString(),
         }
@@ -124,199 +132,172 @@ export default function BookingScreen() {
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
 
-        {/* Parking Summary Card */}
+        {/* ── PARKING INFO ── */}
         <View style={styles.summaryCard}>
-          <View style={styles.summaryIconWrap}>
-            <Ionicons name="location" size={20} color={COLORS.oliveDark} />
-          </View>
+          <Ionicons name="location" size={20} color={COLORS.oliveDark} style={{ marginRight: 12 }} />
           <View style={{ flex: 1 }}>
-            <Text style={styles.summaryTitle}>{parking.name}</Text>
-            <Text style={styles.summaryAddress}>{parking.address}</Text>
+            <Text style={styles.summaryTitle} numberOfLines={1}>{parking.name}</Text>
+            <Text style={styles.summaryAddress} numberOfLines={1}>{parking.address}</Text>
           </View>
           <View style={styles.priceBadge}>
             <Text style={styles.priceBadgeText}>₹{parking.pricePerHour}/hr</Text>
           </View>
         </View>
 
-        {/* Vehicle Type */}
-        <Text style={styles.sectionTitle}>Vehicle Type</Text>
+        {/* ── VEHICLE TYPE ── */}
+        <SectionHeader title="Vehicle Type" />
         <View style={styles.vehicleRow}>
           {VEHICLE_TYPES.map((v) => (
             <TouchableOpacity
               key={v.key}
               style={[styles.vehicleCard, vehicleType === v.key && styles.vehicleCardActive]}
-              onPress={() => setVehicleType(v.key)}
-              activeOpacity={0.8}
+              onPress={() => {
+                  setVehicleType(v.key);
+                  setSelectedSlot(null);
+              }}
             >
-              <Ionicons
-                name={v.icon}
-                size={28}
-                color={vehicleType === v.key ? COLORS.oliveDark : '#999'}
-              />
-              <Text style={[styles.vehicleLabel, vehicleType === v.key && styles.vehicleLabelActive]}>
-                {v.label}
-              </Text>
-              {vehicleType === v.key && (
-                <View style={styles.vehicleCheck}>
-                  <Ionicons name="checkmark-circle" size={18} color={COLORS.oliveDark} />
-                </View>
-              )}
+              <Ionicons name={v.icon} size={28} color={vehicleType === v.key ? COLORS.oliveDark : '#999'} />
+              <Text style={[styles.vehicleLabel, vehicleType === v.key && styles.vehicleLabelActive]}>{v.label}</Text>
             </TouchableOpacity>
           ))}
         </View>
 
-        {/* Custom Date Picker */}
-        <Text style={styles.sectionTitle}>Select Date</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.dateScroll}>
-            {next7Days.map((date, idx) => {
-                const isSelected = selectedDate.toDateString() === date.toDateString();
-                const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
-                const dayNum = date.getDate();
-                return (
-                    <TouchableOpacity 
-                        key={idx} 
-                        style={[styles.dateCard, isSelected && styles.dateCardActive]}
-                        onPress={() => setSelectedDate(date)}
-                    >
-                        <Text style={[styles.dayText, isSelected && styles.dayTextActive]}>{dayName}</Text>
-                        <Text style={[styles.dateText, isSelected && styles.dateTextActive]}>{dayNum}</Text>
-                    </TouchableOpacity>
-                );
-            })}
-        </ScrollView>
+        {/* ── DATE & TIME PICKER ── */}
+        <SectionHeader title="Select Schedule" />
+        <View style={styles.dateTimeContainer}>
+           <TouchableOpacity style={styles.pickerBtn} onPress={() => setShowDatePicker(true)}>
+              <Ionicons name="calendar-outline" size={20} color="#666" />
+              <View style={styles.pickerTextWrap}>
+                  <Text style={styles.pickerLabel}>Date</Text>
+                  <Text style={styles.pickerValue}>{formatDate(startDate)}</Text>
+              </View>
+           </TouchableOpacity>
 
-        {/* Custom Time Picker */}
-        <Text style={styles.sectionTitle}>Select Arrival Time</Text>
-        <View style={styles.timePickerContainer}>
-            <View style={styles.timeInputGroup}>
-                <TextInput 
-                    style={styles.timeInput}
-                    value={inputHour}
-                    onChangeText={(val) => {
-                        const n = parseInt(val);
-                        if (!val || (n >= 0 && n <= 23)) setInputHour(val);
-                    }}
-                    keyboardType="numeric"
-                    maxLength={2}
-                />
-                <Text style={styles.timeSeparator}>:</Text>
-                <TextInput 
-                    style={styles.timeInput}
-                    value={inputMinute}
-                    onChangeText={(val) => {
-                        const n = parseInt(val);
-                        if (!val || (n >= 0 && n <= 59)) setInputMinute(val);
-                    }}
-                    keyboardType="numeric"
-                    maxLength={2}
-                />
-            </View>
-            <Text style={styles.timeFormatHint}>(24h Format)</Text>
+           <TouchableOpacity style={styles.pickerBtn} onPress={() => setShowTimePicker(true)}>
+              <Ionicons name="time-outline" size={20} color="#666" />
+              <View style={styles.pickerTextWrap}>
+                  <Text style={styles.pickerLabel}>Arrival</Text>
+                  <Text style={styles.pickerValue}>{formatTime(startDate)}</Text>
+              </View>
+           </TouchableOpacity>
         </View>
 
-        {/* Duration Picker */}
-        <Text style={styles.sectionTitle}>Duration</Text>
+        {showDatePicker && (
+            <DateTimePicker
+                value={startDate}
+                mode="date"
+                minimumDate={new Date()}
+                display={Platform.OS === 'ios' ? 'spinner' : 'calendar'}
+                onChange={onDateChange}
+            />
+        )}
+        {showTimePicker && (
+            <DateTimePicker
+                value={startDate}
+                mode="time"
+                display={Platform.OS === 'ios' ? 'spinner' : 'clock'}
+                onChange={onTimeChange}
+            />
+        )}
+
+        {/* ── DURATION ── */}
+        <SectionHeader title="Duration" />
         <View style={styles.durationGrid}>
           {DURATION_OPTIONS.map((opt) => (
             <TouchableOpacity
               key={opt.hours}
               style={[styles.durationChip, selectedHours === opt.hours && styles.durationChipActive]}
               onPress={() => setSelectedHours(opt.hours)}
-              activeOpacity={0.8}
             >
-              <Text style={[styles.durationChipText, selectedHours === opt.hours && styles.durationChipTextActive]}>
-                {opt.label}
-              </Text>
+              <Text style={[styles.durationChipText, selectedHours === opt.hours && styles.durationChipTextActive]}>{opt.label}</Text>
             </TouchableOpacity>
           ))}
         </View>
 
-        {/* Spot Selection */}
-        <Text style={styles.sectionTitle}>Select Parking Spot</Text>
-        <View style={styles.chipContainer}>
-          {(parking.spots || [])
-            .filter(s => s.vehicleType === vehicleType)
-            .map((spot, i) => (
+        {/* ── SPOT SELECTION (Grid) ── */}
+        <SectionHeader title="Select Parking Spot" subtitle="Pick a specific spot for your arrival" />
+        <View style={styles.spotGrid}>
+          {(parking.spots && parking.spots.length > 0 
+            ? parking.spots.filter(s => s.vehicleType === vehicleType)
+            : Array.from({ length: 10 }, (_, i) => ({ spotName: `A${i + 1}`, vehicleType }))
+          ).map((spot, i) => (
             <TouchableOpacity 
               key={i} 
               style={[
-                styles.chip, 
-                selectedSlot === spot.spotName && styles.chipSelected
+                styles.spotItem, 
+                selectedSlot === spot.spotName && styles.spotItemActive
               ]}
               onPress={() => setSelectedSlot(spot.spotName)}
             >
+              <Ionicons 
+                  name={vehicleType === 'car' ? "car" : "bicycle"} 
+                  size={16} 
+                  color={selectedSlot === spot.spotName ? "#FFF" : COLORS.oliveDark} 
+              />
               <Text style={[
-                styles.chipText,
-                selectedSlot === spot.spotName && styles.chipTextSelected
+                styles.spotItemText,
+                selectedSlot === spot.spotName && styles.spotItemTextActive
               ]}>{spot.spotName}</Text>
             </TouchableOpacity>
           ))}
         </View>
 
-        {/* Time Summary */}
-        <View style={styles.timeSummaryCard}>
-          <View style={styles.timeRow}>
-            <View style={styles.timeBlock}>
-              <Text style={styles.timeLabel}>Check In</Text>
-              <Text style={styles.timeValue}>{formatTime(startTime)}</Text>
-              <Text style={styles.timeDate}>{formatDate(startTime)}</Text>
-            </View>            <View style={styles.timeLine} />
-            <View style={styles.timeBlock}>
-              <Text style={styles.timeLabel}>Check Out</Text>
-              <Text style={styles.timeValue}>{formatTime(endTime)}</Text>
-              <Text style={styles.timeDate}>{formatDate(endTime)}</Text>
-            </View>
-          </View>
-          <View style={styles.durationHint}>
-              <Text style={styles.durationHintText}>Total Duration: {selectedHours} hours</Text>
-          </View>
+        {/* ── FARE SUMMARY ── */}
+        <View style={styles.fareCard}>
+           <Text style={styles.fareTitle}>Booking Summary</Text>
+           <View style={styles.fareRow}>
+              <Text style={styles.fareLabel}>Arrival</Text>
+              <Text style={styles.fareValueText}>{formatTime(startTime)}, {formatDate(startDate)}</Text>
+           </View>
+           <View style={styles.fareRow}>
+              <Text style={styles.fareLabel}>Total Hours</Text>
+              <Text style={styles.fareValueText}>{selectedHours} hours</Text>
+           </View>
+           <View style={styles.fareDivider} />
+           <View style={styles.fareRow}>
+              <Text style={styles.fareLabel}>Selected Spot</Text>
+              <Text style={[styles.fareValueText, { color: COLORS.oliveDark, fontWeight: 'bold' }]}>{selectedSlot || 'Not Chosen'}</Text>
+           </View>
         </View>
 
-        {/* Fare Breakdown */}
-        <View style={styles.fareCard}>
-          <Text style={styles.fareTitle}>Payment Details</Text>
-          <View style={styles.fareRow}>
-            <Text style={styles.fareLabel}>Parking Fee (₹{parking.pricePerHour} × {selectedHours})</Text>
-            <Text style={styles.fareValue}>₹{totalAmount}</Text>
-          </View>
-          <View style={styles.fareDivider} />
-          <View style={styles.fareRow}>
-            <Text style={styles.fareTotalLabel}>Subtotal</Text>
-            <Text style={styles.fareTotalValue}>₹{totalAmount}</Text>
-          </View>
-
-          <View style={styles.policyNotice}>
-            <Ionicons name="close-circle" size={16} color="#D32F2F" />
-            <Text style={styles.policyText}>Note: Advance bookings are non-refundable.</Text>
-          </View>
+        <View style={styles.policyNotice}>
+          <Ionicons name="information-circle" size={16} color="#666" />
+          <Text style={styles.policyText}>Note: Spot reservation depends on availability at arrival.</Text>
         </View>
 
       </ScrollView>
 
-      {/* Bottom CTA */}
+      {/* ── FOOTER ── */}
       <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 20) }]}>
-        <View style={styles.footerAmount}>
-          <Text style={styles.footerAmountLabel}>Grand Total</Text>
-          <Text style={styles.footerAmountValue}>₹{totalAmount}</Text>
+        <View>
+          <Text style={styles.footerLabel}>Grand Total</Text>
+          <Text style={styles.footerValue}>₹{totalAmount}</Text>
         </View>
         <TouchableOpacity
-          style={[styles.payBtn, loading && { opacity: 0.7 }]}
+          style={[styles.payBtn, (!selectedSlot || loading) && { opacity: 0.6 }]}
           onPress={handleProceedToPayment}
-          disabled={loading}
-          activeOpacity={0.85}
+          disabled={loading || !selectedSlot}
         >
           {loading ? (
             <ActivityIndicator color={COLORS.oliveDark} />
           ) : (
-            <>
-              <Text style={styles.payBtnText}>Confirm Booking</Text>
-              <Ionicons name="chevron-forward" size={18} color={COLORS.oliveDark} style={{ marginLeft: 6 }} />
-            </>
+            <Text style={styles.payBtnText}>
+                {selectedSlot ? `Confirm ${selectedSlot}` : 'Pick a Spot'}
+            </Text>
           )}
         </TouchableOpacity>
       </View>
     </SafeAreaView>
   );
+}
+
+function SectionHeader({ title, subtitle }) {
+    return (
+        <View style={{ marginBottom: 12, marginTop: 15 }}>
+            <Text style={styles.sectionTitle}>{title}</Text>
+            {subtitle && <Text style={styles.sectionSubtitle}>{subtitle}</Text>}
+        </View>
+    );
 }
 
 const styles = StyleSheet.create({
@@ -328,88 +309,67 @@ const styles = StyleSheet.create({
   backBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#F5F5F5', justifyContent: 'center', alignItems: 'center' },
   headerTitle: { flex: 1, textAlign: 'center', fontSize: 18, fontWeight: 'bold', color: COLORS.oliveDark },
   scrollContent: { padding: 20, paddingBottom: 140 },
+  
   summaryCard: {
-    backgroundColor: '#FFF', borderRadius: 14, padding: 16, flexDirection: 'row', alignItems: 'center', marginBottom: 24, ...SHADOWS.light,
+    backgroundColor: '#FFF', borderRadius: 14, padding: 16, flexDirection: 'row', alignItems: 'center', marginBottom: 10, ...SHADOWS.light,
   },
-  summaryIconWrap: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#F0E68C', justifyContent: 'center', alignItems: 'center', marginRight: 12 },
-  summaryTitle: { fontSize: 16, fontWeight: 'bold', color: '#333', marginBottom: 2 },
-  summaryAddress: { fontSize: 12, color: '#666' },
+  summaryTitle: { fontSize: 16, fontWeight: 'bold', color: '#333' },
+  summaryAddress: { fontSize: 12, color: '#666', marginTop: 2 },
   priceBadge: { backgroundColor: '#FBD427', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8 },
   priceBadgeText: { fontSize: 12, fontWeight: 'bold', color: '#4C4223' },
-  sectionTitle: { fontSize: 16, fontWeight: '700', color: COLORS.oliveDark, marginBottom: 12, marginTop: 10 },
-  vehicleRow: { flexDirection: 'row', gap: 12, marginBottom: 20 },
+
+  sectionTitle: { fontSize: 15, fontWeight: '700', color: COLORS.oliveDark },
+  sectionSubtitle: { fontSize: 11, color: '#999', marginTop: 2 },
+
+  vehicleRow: { flexDirection: 'row', gap: 12, marginBottom: 15 },
   vehicleCard: {
-    flex: 1, backgroundColor: '#FFF', borderRadius: 14, padding: 18, alignItems: 'center', borderWidth: 2, borderColor: 'transparent', ...SHADOWS.light,
+    flex: 1, backgroundColor: '#FFF', borderRadius: 12, padding: 16, alignItems: 'center', borderWidth: 2, borderColor: 'transparent', ...SHADOWS.light,
   },
   vehicleCardActive: { borderColor: '#FBD427', backgroundColor: '#FFFDF0' },
-  vehicleLabel: { marginTop: 8, fontSize: 14, fontWeight: '600', color: '#999' },
+  vehicleLabel: { marginTop: 6, fontSize: 13, fontWeight: '600', color: '#999' },
   vehicleLabelActive: { color: COLORS.oliveDark },
-  vehicleCheck: { position: 'absolute', top: 8, right: 8 },
-  
-  dateScroll: { marginBottom: 20 },
-  dateCard: {
-      width: 60, height: 80, backgroundColor: '#FFF', borderRadius: 12, marginRight: 10,
-      justifyContent: 'center', alignItems: 'center', ...SHADOWS.light, borderWidth: 1, borderColor: '#EEE'
+
+  dateTimeContainer: { flexDirection: 'row', gap: 12, marginBottom: 15 },
+  pickerBtn: {
+      flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', padding: 12, borderRadius: 12, ...SHADOWS.light, gap: 10
   },
-  dateCardActive: { backgroundColor: '#FBD427', borderColor: '#FBD427' },
-  dayText: { fontSize: 12, color: '#999', marginBottom: 4 },
-  dayTextActive: { color: '#4C4223', fontWeight: 'bold' },
-  dateText: { fontSize: 18, fontWeight: 'bold', color: '#333' },
-  dateTextActive: { color: '#4C4223' },
+  pickerLabel: { fontSize: 11, color: '#999' },
+  pickerValue: { fontSize: 14, fontWeight: 'bold', color: '#333' },
 
-  timePickerContainer: { flexDirection: 'row', alignItems: 'center', marginBottom: 24 },
-  timeInputGroup: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', padding: 10, borderRadius: 10, ...SHADOWS.light },
-  timeInput: { width: 50, height: 50, textAlign: 'center', fontSize: 24, fontWeight: 'bold', color: '#333' },
-  timeSeparator: { fontSize: 24, fontWeight: 'bold', color: '#333', marginHorizontal: 4 },
-  timeFormatHint: { marginLeft: 15, fontSize: 14, color: '#999' },
-
-  durationGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 24 },
-  durationChip: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 30, backgroundColor: '#FFF', borderWidth: 1, borderColor: '#E0E0E0' },
+  durationGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 15 },
+  durationChip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, backgroundColor: '#FFF', borderWidth: 1, borderColor: '#EEE' },
   durationChipActive: { backgroundColor: '#FBD427', borderColor: '#FBD427' },
-  durationChipText: { fontSize: 14, fontWeight: '600', color: '#999' },
+  durationChipText: { fontSize: 13, color: '#999', fontWeight: '600' },
   durationChipTextActive: { color: '#4C4223' },
 
-  // Spot Selection
-  chipContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 24 },
-  chip: {
-    backgroundColor: '#FFF', paddingHorizontal: 16, paddingVertical: 10,
-    borderRadius: 12, borderWidth: 1, borderColor: '#EEE', ...SHADOWS.light,
+  spotGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 20 },
+  spotItem: {
+      width: '23%', height: 50, backgroundColor: '#FFF', borderRadius: 10, justifyContent: 'center', alignItems: 'center', gap: 4,
+      borderWidth: 1, borderColor: '#EEE', ...SHADOWS.light
   },
-  chipSelected: { backgroundColor: '#FBD427', borderColor: '#FBD427' },
-  chipText: { fontSize: 13, color: '#666', fontWeight: '600' },
-  chipTextSelected: { color: '#4C4223', fontWeight: 'bold' },
+  spotItemActive: { backgroundColor: COLORS.oliveDark, borderColor: COLORS.oliveDark },
+  spotItemText: { fontSize: 12, fontWeight: 'bold', color: '#666' },
+  spotItemTextActive: { color: '#FFF' },
 
-  timeSummaryCard: { backgroundColor: '#FFF', borderRadius: 14, padding: 20, marginBottom: 20, ...SHADOWS.light },
-  timeRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  timeBlock: { alignItems: 'center', flex: 1 },
-  timeLabel: { fontSize: 11, color: '#999', marginBottom: 4, textTransform: 'uppercase' },
-  timeValue: { fontSize: 20, fontWeight: 'bold', color: '#333' },
-  timeDate: { fontSize: 12, color: '#666', marginTop: 2 },
-  timeLine: { width: 1, height: 40, backgroundColor: '#EEE' },
-  durationHint: { alignItems: 'center', marginTop: 15, borderTopWidth: 1, borderTopColor: '#F5F5F5', paddingTop: 10 },
-  durationHintText: { fontSize: 13, color: '#4C4223', fontWeight: 'bold' },
+  fareCard: { backgroundColor: '#FFF', borderRadius: 14, padding: 16, ...SHADOWS.light },
+  fareTitle: { fontSize: 14, fontWeight: 'bold', color: '#333', marginBottom: 12 },
+  fareRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
+  fareLabel: { fontSize: 13, color: '#666' },
+  fareValueText: { fontSize: 13, fontWeight: '600', color: '#333' },
+  fareDivider: { height: 1, backgroundColor: '#F5F5F5', marginVertical: 8 },
 
-  fareCard: { backgroundColor: '#FFF', borderRadius: 14, padding: 20, ...SHADOWS.light },
-  fareTitle: { fontSize: 16, fontWeight: 'bold', color: '#333', marginBottom: 14 },
-  fareRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 },
-  fareLabel: { fontSize: 14, color: '#666' },
-  fareValue: { fontSize: 14, fontWeight: '600', color: '#333' },
-  fareDivider: { height: 1, backgroundColor: '#F5F5F5', marginVertical: 10 },
-  fareTotalLabel: { fontSize: 16, fontWeight: 'bold', color: '#333' },
-  fareTotalValue: { fontSize: 20, fontWeight: 'bold', color: '#4C4223' },
-  policyNotice: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF5F5', padding: 10, borderRadius: 8, marginTop: 15, gap: 6 },
-  policyText: { fontSize: 11, color: '#D32F2F', fontWeight: 'bold' },
+  policyNotice: { flexDirection: 'row', alignItems: 'center', marginTop: 15, gap: 6, paddingHorizontal: 4 },
+  policyText: { fontSize: 11, color: '#888' },
 
   footer: {
     position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: '#FFF', flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 20, paddingTop: 14, borderTopWidth: 1, borderTopColor: '#EEE',
+    paddingHorizontal: 20, paddingTop: 14, borderTopWidth: 1, borderTopColor: '#EEE', 
+    justifyContent: 'space-between'
   },
-  footerAmount: { marginRight: 16 },
-  footerAmountLabel: { fontSize: 12, color: '#999' },
-  footerAmountValue: { fontSize: 22, fontWeight: 'bold', color: '#333' },
+  footerLabel: { fontSize: 11, color: '#999' },
+  footerValue: { fontSize: 20, fontWeight: 'bold', color: '#333' },
   payBtn: {
-    flex: 1, backgroundColor: '#FBD427', flexDirection: 'row', justifyContent: 'center', alignItems: 'center',
-    paddingVertical: 16, borderRadius: 12,
+    backgroundColor: '#FBD427', paddingHorizontal: 24, paddingVertical: 14, borderRadius: 12, minWidth: 160, alignItems: 'center'
   },
-  payBtnText: { fontSize: 16, fontWeight: 'bold', color: '#4C4223' },
+  payBtnText: { fontSize: 15, fontWeight: 'bold', color: '#4C4223' },
 });

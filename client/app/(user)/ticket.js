@@ -130,7 +130,7 @@ export default function TicketScreen() {
             </View>
           </View>
 
-          {/* Vehicle & Amount */}
+          {/* Vehicle, Spot & Amount */}
           <View style={styles.detailsGrid}>
             <View style={styles.detailItem}>
               <Text style={styles.detailLabel}>Vehicle</Text>
@@ -140,8 +140,13 @@ export default function TicketScreen() {
             </View>
             <View style={styles.detailDivider} />
             <View style={styles.detailItem}>
-              <Text style={styles.detailLabel}>Amount Paid</Text>
-              <Text style={[styles.detailValue, { color: COLORS.olive }]}>₹{booking.totalAmount}</Text>
+              <Text style={styles.detailLabel}>Spot No.</Text>
+              <Text style={[styles.detailValue, { color: COLORS.olive }]}>{booking.spotName || '—'}</Text>
+            </View>
+            <View style={styles.detailDivider} />
+            <View style={styles.detailItem}>
+              <Text style={styles.detailLabel}>Amount</Text>
+              <Text style={[styles.detailValue]}>₹{booking.totalAmount}</Text>
             </View>
           </View>
 

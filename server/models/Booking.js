@@ -22,6 +22,10 @@ const bookingSchema = new Schema(
       enum: ["car", "bike"],
       required: true,
     },
+    spotName: {
+      type: String,
+      required: true,
+    },
 
     startTime: {
       type: Date,

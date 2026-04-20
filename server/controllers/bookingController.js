@@ -10,11 +10,11 @@ import Parking from "../models/Parking.js";
  */
 export const createBooking = async (req, res) => {
   try {
-    const { parkingId, vehicleType, startTime, endTime } = req.body;
+    const { parkingId, vehicleType, startTime, endTime, spotName } = req.body;
     const userId = req.user.userId;
 
-    if (!parkingId || !vehicleType || !startTime || !endTime) {
-      return res.status(400).json({ message: "All fields are required" });
+    if (!parkingId || !vehicleType || !startTime || !endTime || !spotName) {
+      return res.status(400).json({ message: "All fields are required (including spot selection)" });
     }
 
     const parking = await Parking.findById(parkingId);
@@ -49,6 +49,7 @@ export const createBooking = async (req, res) => {
       userId,
       parkingId,
       vehicleType,
+      spotName,
       startTime: start,
       endTime: end,
       totalAmount,

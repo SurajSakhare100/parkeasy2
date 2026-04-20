@@ -1,7 +1,7 @@
+import './config/env.js';
 import express from "express";
 import mongoose from "mongoose";
 import cors from "cors";
-import dotenv from "dotenv";
 import authRoutes from "./routes/auth.js";
 import parkingRoutes from "./routes/parking.js";
 import bookingRoutes from "./routes/booking.js";
@@ -9,7 +9,7 @@ import paymentRoutes from "./routes/payment.js";
 import userRoutes from "./routes/user.js";
 import uploadRoutes from "./routes/upload.js";
 
-dotenv.config();
+
 
 const app = express();
 

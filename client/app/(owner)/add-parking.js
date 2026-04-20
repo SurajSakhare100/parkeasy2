@@ -86,10 +86,14 @@ export default function AddParkingScreen() {
   const uploadImagesToServer = async (imageAssets) => {
     const formData = new FormData();
     imageAssets.forEach((img, index) => {
+      // In Expo SDK 50+, the property is 'mimeType'. Fallback to 'type' or image/jpeg
+      const type = img.mimeType || img.type || 'image/jpeg';
+      const name = img.fileName || `parking_${index}.jpg`;
+      
       formData.append('images', {
         uri: img.uri,
-        type: img.mimeType || 'image/jpeg',
-        name: `parking_${index}.jpg`,
+        type: type,
+        name: name,
       });
     });
 
@@ -106,7 +110,8 @@ export default function AddParkingScreen() {
     });
 
     if (!response.ok) {
-      const errData = await response.json();
+      const errData = await response.json().catch(() => ({}));
+      console.error('SERVER UPLOAD ERROR:', errData);
       throw new Error(errData.message || 'Upload failed');
     }
 

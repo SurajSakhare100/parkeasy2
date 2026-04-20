@@ -47,8 +47,9 @@ export default function DetailsHeaderCarousel({
         onScroll={handleScroll}
         scrollEventThrottle={16}
         decelerationRate="fast"
-        snapToInterval={width}
+        disableIntervalMomentum={true}
         snapToAlignment="center"
+        nestedScrollEnabled={true}
       >
         {safeImages.map((uri, index) => (
           <Image
@@ -60,8 +61,8 @@ export default function DetailsHeaderCarousel({
         ))}
       </ScrollView>
 
-      {/* Gradient Overlay */}
-      <View style={styles.overlay} />
+      {/* Gradient Overlay - pointerEvents="none" ensures it doesn't block scrolling */}
+      <View style={styles.overlay} pointerEvents="none" />
 
       {/* Back Button */}
       <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>

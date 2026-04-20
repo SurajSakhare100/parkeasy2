@@ -113,10 +113,14 @@ export default function EditParkingScreen() {
     
     const formData = new FormData();
     imageAssets.forEach((img, index) => {
+      // In Expo SDK 50+, the property is 'mimeType'. Fallback to 'type' or image/jpeg
+      const type = img.mimeType || img.type || 'image/jpeg';
+      const name = img.fileName || `parking_edit_${index}.jpg`;
+      
       formData.append('images', {
         uri: img.uri,
-        type: img.mimeType || 'image/jpeg',
-        name: `parking_edit_${index}.jpg`,
+        type: type,
+        name: name,
       });
     });
 
@@ -132,7 +136,7 @@ export default function EditParkingScreen() {
     });
 
     if (!response.ok) {
-        const errData = await response.json();
+        const errData = await response.json().catch(() => ({}));
         console.error('SERVER UPLOAD ERROR:', errData);
         throw new Error(errData.message || `Upload failed with status ${response.status}`);
     }
@@ -141,9 +145,42 @@ export default function EditParkingScreen() {
     return data.urls;
   };
 
+  // ─── Spot Range Parser (Same as add-parking.js) ───────────────────
+  const parseRange = (rangeStr, vehicleType) => {
+    const spots = [];
+    if (!rangeStr) return [];
+    const parts = rangeStr.split(',');
+    parts.forEach(part => {
+      const trimmed = part.trim();
+      const dashIdx = trimmed.search(/-(?=[^-]*$)/);  // last dash
+      if (dashIdx === -1) {
+        if (trimmed) spots.push({ spotName: trimmed, vehicleType });
+      } else {
+        const startPart = trimmed.substring(0, dashIdx);
+        const endPart = trimmed.substring(dashIdx + 1);
+        const prefix = startPart.match(/^[a-zA-Z]*/)?.[0] || '';
+        const startNum = parseInt(startPart.replace(prefix, ''));
+        const endNum = parseInt(endPart.replace(prefix, ''));
+        if (!isNaN(startNum) && !isNaN(endNum)) {
+          const min = Math.min(startNum, endNum);
+          const max = Math.max(startNum, endNum);
+          for (let i = min; i <= max; i++) {
+            spots.push({ spotName: `${prefix}${i}`, vehicleType });
+          }
+        }
+      }
+    });
+    return spots;
+  };
+
   const handleUpdate = async () => {
     if (!name.trim() || !address.trim() || !pricePerHour || !totalSlots || !latitude || !longitude) {
       Alert.alert('Missing Fields', 'Please fill all required fields.');
+      return;
+    }
+
+    if (images.length < 4) {
+      Alert.alert('Images Required', 'Please ensure there are at least 4 parking images.');
       return;
     }
 
@@ -163,13 +200,25 @@ export default function EditParkingScreen() {
       if (hasCar) vehicleTypeArr.push('car');
       if (hasBike) vehicleTypeArr.push('bike');
 
+      // Re-parse spots if range is provided, otherwise keep existing
+      let finalSpots = parkingData.spots;
+      if (carSpotRange.trim() || bikeSpotRange.trim()) {
+        const newParsedSpots = [];
+        if (hasCar && carSpotRange.trim()) newParsedSpots.push(...parseRange(carSpotRange, 'car'));
+        if (hasBike && bikeSpotRange.trim()) newParsedSpots.push(...parseRange(bikeSpotRange, 'bike'));
+        
+        if (newParsedSpots.length > 0) {
+            finalSpots = newParsedSpots;
+        }
+      }
+
       await parkingService.updateParking(parkingData._id, {
         name: name.trim(),
         address: address.trim(),
         description: description.trim(),
         pricePerHour: Number(pricePerHour),
         totalSlots: Number(totalSlots),
-        availableSlots: Number(totalSlots), // Reset/Update based on total for simplicity if requested "same"
+        availableSlots: Number(totalSlots), 
         location: {
           type: 'Point',
           coordinates: [parseFloat(longitude), parseFloat(latitude)],
@@ -179,7 +228,7 @@ export default function EditParkingScreen() {
         endTime,
         images: finalImages,
         amenities: selectedAmenities,
-        spots: parkingData.spots // Keep existing spots
+        spots: finalSpots
       });
 
       Alert.alert('Success! 🎉', 'Parking details updated successfully!', [
@@ -284,6 +333,41 @@ export default function EditParkingScreen() {
             />
           </View>
         </View>
+
+        {/* ── SPOT DETAILS ── */}
+        <SectionHeader title="🅿️ Spot Details" subtitle="Update spot names (leave blank to keep existing)" />
+
+        {hasCar && (
+          <View style={styles.spotCard}>
+            <View style={styles.spotCardHeader}>
+              <Ionicons name="car" size={18} color="#4C4223" />
+              <Text style={styles.spotCardTitle}>Car Spots</Text>
+            </View>
+            <InputField
+              label="New Spot Range"
+              value={carSpotRange}
+              onChangeText={setCarSpotRange}
+              placeholder="e.g. C1-C20 or C1,C2,C3"
+            />
+            <Text style={styles.helperText}>Use range (C1-C20) or comma-separated (C1,C2,C3)</Text>
+          </View>
+        )}
+
+        {hasBike && (
+          <View style={styles.spotCard}>
+            <View style={styles.spotCardHeader}>
+              <Ionicons name="bicycle" size={18} color="#4C4223" />
+              <Text style={styles.spotCardTitle}>Bike Spots</Text>
+            </View>
+            <InputField
+              label="New Spot Range"
+              value={bikeSpotRange}
+              onChangeText={setBikeSpotRange}
+              placeholder="e.g. B1-B30 or B1,B2,B3"
+            />
+            <Text style={styles.helperText}>Use range (B1-B30) or comma-separated (B1,B2,B3)</Text>
+          </View>
+        )}
 
         {/* ── OPERATING HOURS ── */}
         <SectionHeader title="🕐 Operating Hours" subtitle="24-hour format (HH:MM)" />
@@ -428,6 +512,13 @@ const styles = StyleSheet.create({
     marginTop: 28, marginBottom: 20,
   },
   submitBtnText: { fontSize: 16, fontWeight: 'bold', color: '#4C4223' },
+
+  spotCard: {
+    backgroundColor: '#FFF', borderRadius: 12, padding: 16,
+    borderWidth: 1, borderColor: '#E8E8E8', marginBottom: 12,
+  },
+  spotCardHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
+  spotCardTitle: { fontSize: 14, fontWeight: '700', color: '#4C4223' },
 
   amenitiesContainer: {
     flexDirection: 'row',

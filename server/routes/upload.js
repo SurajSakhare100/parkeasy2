@@ -1,16 +1,9 @@
-import { v2 as cloudinary } from 'cloudinary';
+import cloudinary from '../config/cloudinary.js';
 import multer from 'multer';
 import express from 'express';
 import { protect } from '../middleware/auth.js';
 
 const router = express.Router();
-
-// Configure Cloudinary with server credentials
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-});
 
 // Store uploads in memory (buffer), not disk
 const storage = multer.memoryStorage();
@@ -57,7 +50,7 @@ router.post('/', protect, upload.array('images', 10), async (req, res) => {
     console.error('CLOUDINARY UPLOAD ERROR:', error);
     res.status(500).json({ 
       message: 'Image upload failed', 
-      error: error.message,
+      error: error.message || 'Unknown error during Cloudinary upload',
       details: error
     });
   }

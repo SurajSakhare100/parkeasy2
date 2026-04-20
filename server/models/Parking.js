@@ -26,6 +26,7 @@ const parkingSchema = new Schema(
       },
     },
     address: String,
+    description: { type: String, default: '' },
 
     totalSlots: {
       type: Number,
@@ -48,10 +49,37 @@ const parkingSchema = new Schema(
       },
     ],
 
+    // New Fields
+    spots: [
+      {
+        spotName: String,
+        vehicleType: { type: String, enum: ["car", "bike"] },
+        isOccupied: { type: Boolean, default: false },
+      },
+    ],
+    startTime: {
+      type: String,
+      default: "00:00",
+    },
+    endTime: {
+      type: String,
+      default: "23:59",
+    },
+    images: [
+      {
+        type: String,
+      },
+    ],
+
     isActive: {
       type: Boolean,
       default: true,
     },
+    amenities: [
+      {
+        type: String,
+      },
+    ],
   },
   { timestamps: true }
 );
@@ -60,11 +88,10 @@ const parkingSchema = new Schema(
 parkingSchema.index({ location: "2dsphere" });
 
 // ✅ Pre-save validation: availableSlots must not exceed totalSlots
-parkingSchema.pre("save", function (next) {
+parkingSchema.pre("save", async function () {
   if (this.availableSlots > this.totalSlots) {
-    return next(new Error("availableSlots cannot exceed totalSlots"));
+    throw new Error("availableSlots cannot exceed totalSlots");
   }
-  next();
 });
 
 export default model("Parking", parkingSchema);

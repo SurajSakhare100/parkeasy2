@@ -1,14 +1,22 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert, ActivityIndicator, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, useIsFocused } from 'expo-router';
 import parkingService from '../../services/parkingService';
 
 export default function MyParkingsScreen() {
     const [parkings, setParkings] = useState([]);
     const [loading, setLoading] = useState(true);
     const router = useRouter();
+    const isFocused = useIsFocused();
+
+    const FALLBACK_IMAGES = [
+        'https://images.unsplash.com/photo-1573348722427-f1d6819fdf98?w=400&fit=crop',
+        'https://images.unsplash.com/photo-1540202404-a2f29016b523?w=400&fit=crop',
+        'https://images.unsplash.com/photo-1506521781263-d8422e82f27a?w=400&fit=crop',
+        'https://images.unsplash.com/photo-1590674899484-13da0d1b58f5?w=400&fit=crop',
+    ];
 
     const fetchParkings = async () => {
         try {
@@ -24,8 +32,10 @@ export default function MyParkingsScreen() {
     };
 
     useEffect(() => {
-        fetchParkings();
-    }, []);
+        if (isFocused) {
+            fetchParkings();
+        }
+    }, [isFocused]);
 
     const handleDelete = async (id) => {
         Alert.alert(
@@ -49,16 +59,20 @@ export default function MyParkingsScreen() {
         );
     };
 
-    const renderParkingCard = ({ item }) => (
+    const renderParkingCard = ({ item, index }) => (
         <TouchableOpacity 
             style={styles.card} 
             onPress={() => router.push({ pathname: '/(owner)/parking-details', params: { parking: JSON.stringify(item) } })}
         >
+            <Image 
+                source={{ uri: item.images?.[0] || FALLBACK_IMAGES[index % FALLBACK_IMAGES.length] }} 
+                style={styles.cardImage} 
+            />
             <View style={styles.cardDetails}>
-                <Text style={styles.title}>{item.name}</Text>
+                <Text style={styles.title} numberOfLines={1}>{item.name}</Text>
                 <Text style={styles.address} numberOfLines={2}>{item.address}</Text>
-                <Text style={styles.slots}>Total Slots: {item.totalSlots} | Avail: {item.availableSlots}</Text>
-                <Text style={styles.price}>₹{item.pricePerHour} / hour</Text>
+                <Text style={styles.slots}>Spots: {item.availableSlots}/{item.totalSlots}</Text>
+                <Text style={styles.price}>₹{item.pricePerHour}<Text style={styles.priceUnit}>/hr</Text></Text>
             </View>
 
             <View style={styles.actions}>
@@ -134,7 +148,6 @@ const styles = StyleSheet.create({
     card: {
         backgroundColor: '#FFF',
         borderRadius: 14,
-        padding: 16,
         marginBottom: 16,
         flexDirection: 'row',
         shadowColor: '#000',
@@ -142,10 +155,16 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.05,
         shadowRadius: 10,
         elevation: 2,
+        overflow: 'hidden',
+    },
+    cardImage: {
+        width: 100,
+        height: '100%',
+        minHeight: 120,
     },
     cardDetails: {
         flex: 1,
-        marginRight: 10,
+        padding: 12,
     },
     title: {
         fontSize: 18,
@@ -167,11 +186,17 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: 'bold',
         color: '#A08A38',
-        marginTop: 5,
+        marginTop: 4,
+    },
+    priceUnit: {
+        fontSize: 12,
+        color: '#999',
+        fontWeight: 'normal',
     },
     actions: {
-        justifyContent: 'space-between',
-        alignItems: 'center',
+        justifyContent: 'center',
+        paddingRight: 10,
+        gap: 10,
     },
     actionButton: {
         padding: 8,

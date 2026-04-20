@@ -59,10 +59,21 @@ export default function RootLayout() {
   useEffect(() => {
     const authListener = DeviceEventEmitter.addListener('auth_error', () => {
       setHasToken(false);
+      setUserRole(null);
       router.replace('/(auth)/login');
     });
 
-    return () => authListener.remove();
+    const successListener = DeviceEventEmitter.addListener('auth_success', (data) => {
+      setHasToken(true);
+      if (data?.user?.role) {
+        setUserRole(data.user.role);
+      }
+    });
+
+    return () => {
+      authListener.remove();
+      successListener.remove();
+    };
   }, [router]);
 
   if (isLoading) {

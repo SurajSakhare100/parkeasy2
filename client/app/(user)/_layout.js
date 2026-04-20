@@ -40,10 +40,10 @@ export default function UserLayout() {
       
       {/* Hide these from Bottom Navbar */}
       <Tabs.Screen name="index" options={{ href: null }} />
-      <Tabs.Screen name="parking-details" options={{ href: null }} />
-      <Tabs.Screen name="booking" options={{ href: null }} />
-      <Tabs.Screen name="payment" options={{ href: null }} />
-      <Tabs.Screen name="ticket" options={{ href: null }} />
+      <Tabs.Screen name="parking-details" options={{ href: null, tabBarStyle: { display: 'none' } }} />
+      <Tabs.Screen name="booking" options={{ href: null, tabBarStyle: { display: 'none' } }} />
+      <Tabs.Screen name="payment" options={{ href: null, tabBarStyle: { display: 'none' } }} />
+      <Tabs.Screen name="ticket" options={{ href: null, tabBarStyle: { display: 'none' } }} />
     </Tabs>
   );
 }

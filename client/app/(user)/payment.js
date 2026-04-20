@@ -1,4 +1,4 @@
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import React, { useState, useRef } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity,
@@ -11,7 +11,8 @@ import { COLORS, SIZES, SHADOWS } from '../../theme';
 import paymentService from '../../services/paymentService';
 
 export default function PaymentScreen() {
-  const navigation = useRouter();
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
   const params = useLocalSearchParams();
   const { bookingId, totalAmount, durationHours, parking: parkingParam, vehicleType, startTime, endTime } = params;
   const parking = typeof parkingParam === 'string' ? JSON.parse(parkingParam) : parkingParam;
@@ -47,7 +48,7 @@ export default function PaymentScreen() {
           bookingId,
         });
 
-        navigation.replace({ pathname: '/ticket', params: { booking: JSON.stringify(result.booking) } });
+        router.replace({ pathname: '/ticket', params: { booking: JSON.stringify(result.booking) } });
 
       } else if (data.type === 'PAYMENT_FAILED') {
         setStep('summary');
@@ -279,7 +280,7 @@ export default function PaymentScreen() {
       </ScrollView>
 
       {/* Bottom CTA */}
-      <View style={styles.footer}>
+      <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 20) }]}>
         <View style={styles.footerLeft}>
           <Text style={styles.footerLabel}>Amount to Pay</Text>
           <Text style={styles.footerAmount}>₹{totalAmount}</Text>
@@ -519,8 +520,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: 14,
-    paddingBottom: 20,
+    paddingTop: 16,
     borderTopWidth: 1,
     borderTopColor: '#EEE',
     ...SHADOWS.medium,

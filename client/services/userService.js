@@ -14,6 +14,16 @@ const userService = {
   toggleSavedParking: async (parkingId) => {
     const response = await api.post(`/user/saved/${parkingId}/toggle`);
     return response.data;
+  },
+  
+  getSearchHistory: async () => {
+    const response = await api.get('/user/search/history');
+    return response.data;
+  },
+
+  addSearchHistory: async (query) => {
+    const response = await api.post('/user/search/history', { query });
+    return response.data;
   }
 };
 

@@ -5,9 +5,15 @@ import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SIZES, SHADOWS } from '../../theme';
 import { useRouter, useIsFocused } from 'expo-router';
 import userService from '../../services/userService';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// Default parking image if none provided
-const DEFAULT_IMAGE = "https://images.unsplash.com/photo-1590674899484-13da0d1b58f5?w=200&fit=crop";
+// Default parking images if none provided — cycles through 3 curated photos
+const FALLBACK_IMAGES = [
+  'https://images.unsplash.com/photo-1573348722427-f1d6819fdf98?w=400&fit=crop',
+  'https://images.unsplash.com/photo-1540202404-a2f29016b523?w=400&fit=crop',
+  'https://images.unsplash.com/photo-1506521781263-d8422e82f27a?w=400&fit=crop',
+  'https://images.unsplash.com/photo-1590674899484-13da0d1b58f5?w=400&fit=crop',
+];
 
 export default function SavedParkingScreen() {
   const navigation = useRouter();
@@ -16,9 +22,13 @@ export default function SavedParkingScreen() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (isFocused) {
-      loadSavedParkings();
-    }
+    const checkAndLoad = async () => {
+      const token = await AsyncStorage.getItem('userToken');
+      if (token && isFocused) {
+        loadSavedParkings();
+      }
+    };
+    checkAndLoad();
   }, [isFocused]);
 
   const loadSavedParkings = async () => {
@@ -37,13 +47,16 @@ export default function SavedParkingScreen() {
     }
   };
 
-  const renderItem = ({ item }) => (
+  const renderItem = ({ item, index }) => (
     <TouchableOpacity 
       style={styles.card} 
       activeOpacity={0.8}
       onPress={() => navigation.push({ pathname: '/parking-details', params: { parking: JSON.stringify(item) } })}
     >
-      <Image source={{ uri: item.image || item.images?.[0] || DEFAULT_IMAGE }} style={styles.cardImage} />
+      <Image 
+        source={{ uri: item.images?.[0] || FALLBACK_IMAGES[index % FALLBACK_IMAGES.length] }} 
+        style={styles.cardImage} 
+      />
       <View style={styles.cardInfo}>
         <Text style={styles.cardTitle}>{item.name}</Text>
         <Text style={styles.cardAddress}>{item.address || item.locationText}</Text>

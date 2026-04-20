@@ -2,13 +2,71 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, FlatList, Platform, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter, useIsFocused } from 'expo-router';
 import { COLORS, SIZES } from '../../theme';
 import parkingService from '../../services/parkingService';
+import userService from '../../services/userService';
 
-export default function SearchScreen({ navigation }) {
+export default function SearchScreen() {
+  const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
   const [results, setResults] = useState([]);
+  const [history, setHistory] = useState([]);
+  const [savedParkingIds, setSavedParkingIds] = useState([]);
   const [loading, setLoading] = useState(false);
+  const isFocused = useIsFocused();
+
+  useEffect(() => {
+    if (isFocused) {
+      fetchSavedParkingIds();
+    }
+  }, [isFocused]);
+
+  const fetchSavedParkingIds = async () => {
+    try {
+      const data = await userService.getSavedParkings();
+      setSavedParkingIds(data.map(p => p._id));
+    } catch (err) {
+      console.log(err);
+    }
+  };
+
+  const handleToggleBookmark = async (parkingId) => {
+    if (!parkingId) return;
+    try {
+      await userService.toggleSavedParking(parkingId);
+      setSavedParkingIds(prev => 
+        prev.includes(parkingId) 
+          ? prev.filter(id => id !== parkingId) 
+          : [...prev, parkingId]
+      );
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  useEffect(() => {
+    fetchHistory();
+  }, []);
+
+  const fetchHistory = async () => {
+    try {
+      const data = await userService.getSearchHistory();
+      setHistory(data);
+    } catch (error) {
+      console.error("Fetch history error:", error);
+    }
+  };
+
+  const saveSearch = async (query) => {
+    if (!query.trim()) return;
+    try {
+      await userService.addSearchHistory(query);
+      fetchHistory(); // Refresh history
+    } catch (error) {
+      // Ignore
+    }
+  };
 
   useEffect(() => {
     const delayDebounceFn = setTimeout(() => {
@@ -27,6 +85,9 @@ export default function SearchScreen({ navigation }) {
       setLoading(true);
       const data = await parkingService.searchParkings(query);
       setResults(data);
+      if (data.length > 0) {
+        saveSearch(query);
+      }
     } catch (error) {
       console.error("Search error:", error);
     } finally {
@@ -38,7 +99,7 @@ export default function SearchScreen({ navigation }) {
     <TouchableOpacity 
       style={styles.resultItem}
       activeOpacity={0.7}
-      onPress={() => navigation.push({ pathname: '/parking-details', params: { parking: JSON.stringify(item) } })}
+      onPress={() => router.push({ pathname: '/parking-details', params: { parking: JSON.stringify(item) } })}
     >
       <View style={styles.iconContainer}>
         <Ionicons name="car" size={20} color={COLORS.oliveDark} />
@@ -48,10 +109,17 @@ export default function SearchScreen({ navigation }) {
         <Text style={styles.resultAddress}>{item.address || item.locationText}</Text>
       </View>
       <View style={styles.resultStats}>
-        <Text style={styles.resultRating}>
-          <Ionicons name="star" size={14} color={COLORS.primary} /> 4.5
-        </Text>
-        <Text style={styles.resultDistance}>—</Text>
+        <TouchableOpacity 
+          onPress={() => handleToggleBookmark(item._id)}
+          style={{ marginBottom: 4 }}
+        >
+          <Ionicons 
+            name={savedParkingIds.includes(item._id) ? "bookmark" : "bookmark-outline"} 
+            size={20} 
+            color={COLORS.primary} 
+          />
+        </TouchableOpacity>
+        <Text style={styles.resultDistance}>₹{item.pricePerHour || '—'}/hr</Text>
       </View>
     </TouchableOpacity>
   );
@@ -83,6 +151,28 @@ export default function SearchScreen({ navigation }) {
         {/* List */}
         {loading ? (
           <ActivityIndicator size="large" color={COLORS.primary} style={{ marginTop: 40 }} />
+        ) : searchQuery.trim() === '' ? (
+          /* Search History */
+          <View style={{ flex: 1 }}>
+            <Text style={styles.sectionTitle}>Recent Searches</Text>
+            <FlatList
+              data={history}
+              keyExtractor={item => item._id}
+              renderItem={({ item }) => (
+                <TouchableOpacity 
+                  style={styles.historyItem}
+                  onPress={() => setSearchQuery(item.query)}
+                >
+                  <Ionicons name="time-outline" size={18} color="#AAA" />
+                  <Text style={styles.historyText}>{item.query}</Text>
+                  <Ionicons name="arrow-forward" size={14} color="#DDD" style={{ marginLeft: 'auto' }} />
+                </TouchableOpacity>
+              )}
+              ListEmptyComponent={() => (
+                <Text style={styles.emptyText}>No recent searches</Text>
+              )}
+            />
+          </View>
         ) : (
           <FlatList
             data={results}
@@ -91,8 +181,8 @@ export default function SearchScreen({ navigation }) {
             contentContainerStyle={styles.listContainer}
             ItemSeparatorComponent={() => <View style={styles.separator} />}
             ListEmptyComponent={() => (
-              <Text style={{ textAlign: 'center', color: COLORS.textLight, marginTop: 40 }}>
-                {searchQuery.trim() !== '' ? 'No parkings found.' : 'Start typing to search...'}
+              <Text style={styles.emptyText}>
+                No parkings found for "{searchQuery}"
               </Text>
             )}
           />
@@ -190,5 +280,29 @@ const styles = StyleSheet.create({
   separator: {
     height: 1,
     backgroundColor: COLORS.borderLight,
-  }
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#4C4223',
+    marginBottom: 15,
+  },
+  historyItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F5F5F5',
+    gap: 12,
+  },
+  historyText: {
+    fontSize: 15,
+    color: COLORS.text,
+  },
+  emptyText: {
+    textAlign: 'center',
+    color: COLORS.textLight,
+    marginTop: 40,
+    fontSize: 14,
+  },
 });

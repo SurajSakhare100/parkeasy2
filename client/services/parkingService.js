@@ -28,6 +28,7 @@ const parkingService = {
     return response.data;
   },
   
+
   /**
    * Get all parkings belonging to logged in owner
    */

@@ -7,6 +7,7 @@ import parkingRoutes from "./routes/parking.js";
 import bookingRoutes from "./routes/booking.js";
 import paymentRoutes from "./routes/payment.js";
 import userRoutes from "./routes/user.js";
+import uploadRoutes from "./routes/upload.js";
 
 dotenv.config();
 
@@ -22,6 +23,7 @@ app.use("/api/parking", parkingRoutes);
 app.use("/api/booking", bookingRoutes);
 app.use("/api/payment", paymentRoutes);
 app.use("/api/user", userRoutes);
+app.use("/api/upload", uploadRoutes);
 
 // Database Connection
 mongoose

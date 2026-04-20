@@ -104,7 +104,7 @@ export const updateParking = async (req, res) => {
     const parking = await Parking.findOneAndUpdate(
       { _id: id, ownerId },
       { $set: req.body },
-      { new: true, runValidators: true }
+      { returnDocument: 'after', runValidators: true }
     );
 
     if (!parking) return res.status(404).json({ message: "Parking not found or unauthorized" });
@@ -138,17 +138,22 @@ export const deleteParking = async (req, res) => {
 export const createParking = async (req, res) => {
   try {
     const ownerId = req.user.userId;
-    const { name, address, location, totalSlots, pricePerHour, vehicleType } = req.body;
+    const { name, address, description, location, totalSlots, pricePerHour, vehicleType, spots, startTime, endTime, images } = req.body;
 
     const newParking = new Parking({
       ownerId,
       name,
       address,
+      description,
       location,
       totalSlots,
       availableSlots: totalSlots,
       pricePerHour,
-      vehicleType
+      vehicleType,
+      spots,
+      startTime,
+      endTime,
+      images
     });
 
     const savedParking = await newParking.save();

@@ -9,6 +9,16 @@ import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import * as Location from 'expo-location';
 import axios from 'axios';
 import parkingService from '../../services/parkingService';
+import userService from '../../services/userService';
+import { useIsFocused } from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const FALLBACK_PARKING_IMAGES = [
+  'https://images.unsplash.com/photo-1573348722427-f1d6819fdf98?w=800&fit=crop',
+  'https://images.unsplash.com/photo-1540202404-a2f29016b523?w=800&fit=crop',
+  'https://images.unsplash.com/photo-1506521781263-d8422e82f27a?w=800&fit=crop',
+  'https://images.unsplash.com/photo-1590674899484-13da0d1b58f5?w=800&fit=crop',
+];
 
 export default function UserHomeScreen() {
   const [filterVisible, setFilterVisible] = useState(false);
@@ -24,6 +34,8 @@ export default function UserHomeScreen() {
   });
 
   const navigation = useRouter();
+  const isFocused = useIsFocused();
+  const [savedParkingIds, setSavedParkingIds] = useState([]);
 
   useEffect(() => {
     (async () => {
@@ -40,6 +52,38 @@ export default function UserHomeScreen() {
 
     fetchParkings();
   }, []);
+
+  useEffect(() => {
+    const checkAndFetch = async () => {
+      const token = await AsyncStorage.getItem('userToken');
+      if (token && isFocused) {
+        fetchSavedParkingIds();
+      }
+    };
+    checkAndFetch();
+  }, [isFocused]);
+
+  const fetchSavedParkingIds = async () => {
+    try {
+      const data = await userService.getSavedParkings();
+      setSavedParkingIds(data.map(p => p._id));
+    } catch (err) {
+      console.log(err);
+    }
+  };
+
+  const handleToggleBookmark = async (parkingId) => {
+    try {
+      await userService.toggleSavedParking(parkingId);
+      setSavedParkingIds(prev => 
+        prev.includes(parkingId) 
+          ? prev.filter(id => id !== parkingId) 
+          : [...prev, parkingId]
+      );
+    } catch (error) {
+      console.error(error);
+    }
+  };
 
   const fetchParkings = async () => {
     try {
@@ -151,7 +195,10 @@ export default function UserHomeScreen() {
               onPress={() => navigation.push({ pathname: '/parking-details', params: { parking: JSON.stringify(selectedParking) } })}
             >
               <Image
-                source={{ uri: 'https://images.unsplash.com/photo-1590674899484-13da0d1b58f5?w=400&fit=crop' }}
+                source={{
+                  uri: selectedParking.images?.[0] ||
+                    FALLBACK_PARKING_IMAGES[parkings.indexOf(selectedParking) % FALLBACK_PARKING_IMAGES.length],
+                }}
                 style={styles.parkingImage}
               />
               <View style={styles.cardHeader}>
@@ -173,8 +220,15 @@ export default function UserHomeScreen() {
                   </Text>
                 </View>
                 <View style={styles.actions}>
-                  <TouchableOpacity style={styles.bookmarkBtn}>
-                    <Ionicons name="bookmark-outline" size={22} color={COLORS.primary} />
+                  <TouchableOpacity 
+                    style={styles.bookmarkBtn}
+                    onPress={() => handleToggleBookmark(selectedParking._id)}
+                  >
+                    <Ionicons 
+                      name={savedParkingIds.includes(selectedParking._id) ? "bookmark" : "bookmark-outline"} 
+                      size={22} 
+                      color={COLORS.primary} 
+                    />
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={styles.bookBtn}
@@ -319,14 +373,14 @@ const styles = StyleSheet.create({
   },
   bottomCardContainer: {
     position: 'absolute',
-    bottom: 100,
+    bottom: 120,
     left: 20,
     right: 20,
   },
   parkingCard: {
     backgroundColor: COLORS.surface,
     borderRadius: 16,
-    padding: 15,
+    padding: 12,
     ...SHADOWS.medium,
   },
   parkingImage: {

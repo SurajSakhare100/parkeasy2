@@ -1,16 +1,20 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Platform, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Platform, ActivityIndicator, Dimensions } from 'react-native';
+const { width } = Dimensions.get('window');
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SIZES, SHADOWS } from '../theme';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function BottomBookingBar({ price, onBookNow, loading = false }) {
+  const insets = useSafeAreaInsets();
+  
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { paddingBottom: Math.max(insets.bottom, 20) }]}>
       <View style={styles.content}>
         <View style={styles.priceContainer}>
           <Text style={styles.priceLabel}>Price</Text>
           <Text style={styles.priceText}>
-            {price}<Text style={styles.priceUnit}>/hr</Text>
+            {price}<Text style={styles.priceUnit}></Text>
           </Text>
         </View>
         <TouchableOpacity
@@ -37,13 +41,14 @@ const styles = StyleSheet.create({
   container: {
     position: 'absolute',
     bottom: 0,
+    left: 0,
+    right: 0,
     width: '100%',
     backgroundColor: '#FFF',
-    paddingTop: 14,
-    paddingBottom: 100,
+    paddingTop: 16,
     paddingHorizontal: 20,
     borderTopWidth: 1,
-    borderTopColor: '#EFEFEF',
+    borderTopColor: '#EEE',
     ...SHADOWS.medium,
   },
   content: {
@@ -60,7 +65,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   priceLabel: {
-    fontSize: 10,
+    fontSize: 8,
     color: '#8E6F2A',
     fontWeight: '600',
     textTransform: 'uppercase',
@@ -73,7 +78,7 @@ const styles = StyleSheet.create({
     color: '#333',
   },
   priceUnit: {
-    fontSize: SIZES.font,
+    fontSize: SIZES.small,
     color: '#666',
     fontWeight: 'normal',
   },

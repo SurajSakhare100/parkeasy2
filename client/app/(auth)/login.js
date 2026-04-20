@@ -10,7 +10,8 @@ import {
   Image,
   KeyboardAvoidingView,
   Platform,
-  ScrollView
+  ScrollView,
+  DeviceEventEmitter
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { COLORS, SIZES, SHADOWS } from '../../theme';
@@ -23,7 +24,7 @@ export default function LoginScreen() {
   // const [email, setEmail] = useState(''); // Commented down email field
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
-  const [role, setRole] = useState('client'); // default role
+  const [role, setRole] = useState('customer'); // default role
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -44,10 +45,13 @@ export default function LoginScreen() {
       await AsyncStorage.setItem('userToken', token);
       await AsyncStorage.setItem('user', JSON.stringify(user));
 
+      // Emit success to update RootLayout state immediately
+      DeviceEventEmitter.emit('auth_success', { token, user });
+
       if (role === 'owner') {
         router.replace('/(owner)/home');
       } else {
-        router.replace('/(user)/my-bookings');
+        router.replace('/(user)/user-home');
       }
 
     } catch (error) {
@@ -84,10 +88,10 @@ export default function LoginScreen() {
             {/* Role Selection */}
             <View style={styles.roleContainer}>
               <TouchableOpacity
-                style={[styles.roleBtn, role === 'client' && styles.roleBtnActive]}
-                onPress={() => setRole('client')}
+                style={[styles.roleBtn, role === 'customer' && styles.roleBtnActive]}
+                onPress={() => setRole('customer')}
               >
-                <Text style={[styles.roleText, role === 'client' && styles.roleTextActive]}>Client</Text>
+                <Text style={[styles.roleText, role === 'customer' && styles.roleTextActive]}>Customer</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.roleBtn, role === 'owner' && styles.roleBtnActive]}

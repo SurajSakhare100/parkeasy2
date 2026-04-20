@@ -56,6 +56,15 @@ export default function TicketScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.push('/user-home')} style={styles.backBtn}>
+          <Ionicons name="arrow-back" size={22} color={COLORS.oliveDark} />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Booking Ticket</Text>
+        <View style={{ width: 40 }} />
+      </View>
+
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
 
         {/* Success Animation */}
@@ -193,6 +202,30 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F8F7F2',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    backgroundColor: '#FFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#EEE',
+  },
+  backBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#F5F5F5',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerTitle: {
+    flex: 1,
+    textAlign: 'center',
+    fontSize: SIZES.large,
+    fontWeight: 'bold',
+    color: COLORS.oliveDark,
   },
   scrollContent: {
     padding: 24,

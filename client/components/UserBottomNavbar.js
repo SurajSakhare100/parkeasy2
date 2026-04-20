@@ -91,7 +91,7 @@ const UserBottomNavbar = ({ state, descriptors, navigation }) => {
               <Text style={[styles.label, { color: isFocused ? COLORS.oliveDark : COLORS.textLight, fontWeight: isFocused ? '700' : '500' }]}>
                 {label}
               </Text>
-              {isFocused && <View style={styles.activeIndicator} />}
+              {/* {isFocused && <View style={styles.activeIndicator} />} */}
             </TouchableOpacity>
           );
         })}

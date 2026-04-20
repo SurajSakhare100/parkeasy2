@@ -24,8 +24,8 @@ export default function ProfileScreen() {
             "Are you sure you want to log out?",
             [
                 { text: "Cancel", style: "cancel" },
-                { 
-                    text: "Logout", 
+                {
+                    text: "Logout",
                     style: "destructive",
                     onPress: async () => {
                         await AsyncStorage.removeItem('userToken');
@@ -96,7 +96,7 @@ const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#F8F7F2' },
     header: { padding: 20, backgroundColor: '#FFF', borderBottomWidth: 1, borderBottomColor: '#EEE' },
     headerText: { fontSize: 24, fontWeight: 'bold', color: '#4C4223' },
-    content: { padding: 20 },
+    content: { paddingBottom: 100, paddingTop: 20, paddingHorizontal: 20 },
     profileHeader: {
         alignItems: 'center', backgroundColor: '#FFF', borderRadius: 16,
         padding: 30, marginBottom: 20,

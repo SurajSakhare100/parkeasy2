@@ -1,4 +1,5 @@
 import User from "../models/User.js";
+import SearchHistory from "../models/SearchHistory.js";
 
 /**
  * Get the current user's profile
@@ -69,6 +70,48 @@ export const getSavedParkings = async (req, res) => {
     res.status(200).json(user.savedParkings);
   } catch (error) {
     console.error("Get saved parkings error:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+/**
+ * Get user's search history
+ */
+export const getSearchHistory = async (req, res) => {
+  try {
+    const history = await SearchHistory.find({ userId: req.user.userId })
+      .sort({ createdAt: -1 })
+      .limit(10);
+    res.status(200).json(history);
+  } catch (error) {
+    console.error("Get search history error:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+/**
+ * Add a query to search history
+ */
+export const addSearchHistory = async (req, res) => {
+  try {
+    const { query } = req.body;
+    if (!query) return res.status(400).json({ message: "Query is required" });
+
+    // Avoid duplicate adjacent searches or just save all
+    const lastSearch = await SearchHistory.findOne({ userId: req.user.userId }).sort({ createdAt: -1 });
+    if (lastSearch && lastSearch.query === query) {
+      return res.status(200).json(lastSearch);
+    }
+
+    const newHistory = new SearchHistory({
+      userId: req.user.userId,
+      query,
+    });
+    await newHistory.save();
+
+    res.status(201).json(newHistory);
+  } catch (error) {
+    console.error("Add search history error:", error);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };

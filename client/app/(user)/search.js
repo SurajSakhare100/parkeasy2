@@ -1,20 +1,33 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, FlatList, Platform, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, FlatList, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter, useIsFocused } from 'expo-router';
+import { useRouter, useIsFocused, useLocalSearchParams } from 'expo-router';
 import { COLORS, SIZES } from '../../theme';
 import parkingService from '../../services/parkingService';
 import userService from '../../services/userService';
+import FilterModal from '../../components/FilterModal';
 
 export default function SearchScreen() {
   const router = useRouter();
+  const { initialFilters } = useLocalSearchParams();
+
   const [searchQuery, setSearchQuery] = useState('');
   const [results, setResults] = useState([]);
   const [history, setHistory] = useState([]);
   const [savedParkingIds, setSavedParkingIds] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [filterVisible, setFilterVisible] = useState(false);
+  // Pre-populate filters if navigated from home filter modal
+  const [activeFilters, setActiveFilters] = useState(
+    initialFilters ? JSON.parse(initialFilters) : {}
+  );
   const isFocused = useIsFocused();
+
+  // Count how many non-default filters are active
+  const activeFilterCount = Object.values(activeFilters).filter(
+    v => v && v !== 'distance' && v !== 'all' && v !== 'false'
+  ).length;
 
   useEffect(() => {
     if (isFocused) {
@@ -71,27 +84,35 @@ export default function SearchScreen() {
   useEffect(() => {
     const delayDebounceFn = setTimeout(() => {
       if (searchQuery.trim() !== '') {
-        executeSearch(searchQuery);
+        executeSearch(searchQuery, activeFilters);
       } else {
         setResults([]);
       }
-    }, 500); // 500ms debounce
+    }, 500);
 
     return () => clearTimeout(delayDebounceFn);
-  }, [searchQuery]);
+  }, [searchQuery, activeFilters]); // re-search when filters change too
 
-  const executeSearch = async (query) => {
+  const executeSearch = async (query, filters = {}) => {
     try {
       setLoading(true);
-      const data = await parkingService.searchParkings(query);
+      const data = await parkingService.searchParkings(query, filters);
       setResults(data);
       if (data.length > 0) {
         saveSearch(query);
       }
     } catch (error) {
-      console.error("Search error:", error);
+      console.error('Search error:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleApplyFilters = (filters) => {
+    setActiveFilters(filters);
+    // If there's already a query, re-search immediately with new filters
+    if (searchQuery.trim()) {
+      executeSearch(searchQuery, filters);
     }
   };
 
@@ -144,8 +165,16 @@ export default function SearchScreen() {
             onChangeText={setSearchQuery}
             placeholder="Search location..."
             placeholderTextColor={COLORS.textLight}
-            autoFocus={true} // Automatically open keyboard
+            autoFocus={true}
           />
+          <TouchableOpacity style={styles.filterBtn} onPress={() => setFilterVisible(true)}>
+            <Ionicons name="options-outline" size={20} color={activeFilterCount > 0 ? COLORS.oliveDark : COLORS.textLight} />
+            {activeFilterCount > 0 && (
+              <View style={styles.filterBadge}>
+                <Text style={styles.filterBadgeText}>{activeFilterCount}</Text>
+              </View>
+            )}
+          </TouchableOpacity>
         </View>
 
         {/* List */}
@@ -188,6 +217,12 @@ export default function SearchScreen() {
           />
         )}
       </View>
+
+      <FilterModal
+        visible={filterVisible}
+        onClose={() => setFilterVisible(false)}
+        onApply={handleApplyFilters}
+      />
     </SafeAreaView>
   );
 }
@@ -220,11 +255,34 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1.5,
-    borderColor: '#A08A38', // Distinct olive border as shown in screenshot
+    borderColor: '#A08A38',
     borderRadius: SIZES.radius - 4,
     paddingHorizontal: 15,
     paddingVertical: 12,
     marginBottom: 30,
+  },
+  filterBtn: {
+    marginLeft: 8,
+    paddingLeft: 8,
+    borderLeftWidth: 1,
+    borderLeftColor: '#E0E0E0',
+    position: 'relative',
+  },
+  filterBadge: {
+    position: 'absolute',
+    top: -6,
+    right: -6,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: COLORS.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  filterBadgeText: {
+    fontSize: 9,
+    fontWeight: 'bold',
+    color: '#333',
   },
   searchIcon: {
     marginRight: 10,

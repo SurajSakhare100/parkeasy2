@@ -1,5 +1,5 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -11,7 +11,9 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  DeviceEventEmitter
+  DeviceEventEmitter,
+  Animated,
+  Dimensions
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { COLORS, SIZES, SHADOWS } from '../../theme';
@@ -19,14 +21,26 @@ import { Ionicons } from '@expo/vector-icons';
 import authService from '../../services/authService';
 import { useRouter } from 'expo-router';
 
+const { width } = Dimensions.get('window');
+
 export default function LoginScreen() {
   const router = useRouter();
-  // const [email, setEmail] = useState(''); // Commented down email field
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState('customer'); // default role
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  // Animation for role selector
+  const slideAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.spring(slideAnim, {
+      toValue: role === 'customer' ? 0 : 1,
+      useNativeDriver: true,
+      bounciness: 8,
+    }).start();
+  }, [role]);
 
   const handleLogin = async () => {
     if (!phone || !password) {
@@ -34,18 +48,12 @@ export default function LoginScreen() {
       return;
     }
 
-
-
     setLoading(true);
     try {
-      // Call actual backend login using phone, password, and role
       const data = await authService.login(phone, password, role);
-
       const { token, user } = data;
       await AsyncStorage.setItem('userToken', token);
       await AsyncStorage.setItem('user', JSON.stringify(user));
-
-      // Emit success to update RootLayout state immediately
       DeviceEventEmitter.emit('auth_success', { token, user });
 
       if (role === 'owner') {
@@ -53,7 +61,6 @@ export default function LoginScreen() {
       } else {
         router.replace('/(user)/user-home');
       }
-
     } catch (error) {
       Alert.alert('Error', error.response?.data?.message || 'Login failed. Please check your credentials.');
     } finally {
@@ -61,10 +68,17 @@ export default function LoginScreen() {
     }
   };
 
+  const selectorWidth = (width - 48 - 8) / 2; // (ScreenWidth - padding - innerPadding) / 2
+
+  const translateX = slideAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, selectorWidth],
+  });
+
   return (
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView
-        behavior="height"
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}
       >
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
@@ -85,68 +99,78 @@ export default function LoginScreen() {
           <View style={styles.formContainer}>
             <Text style={styles.title}>Login</Text>
 
-            {/* Role Selection */}
-            <View style={styles.roleContainer}>
+            {/* Role Selection (Segmented Control) */}
+            <View style={styles.segmentedContainer}>
+              <Animated.View 
+                style={[
+                  styles.activeSegment, 
+                  { width: selectorWidth, transform: [{ translateX }] }
+                ]} 
+              />
               <TouchableOpacity
-                style={[styles.roleBtn, role === 'customer' && styles.roleBtnActive]}
+                style={styles.segmentBtn}
                 onPress={() => setRole('customer')}
+                activeOpacity={1}
               >
-                <Text style={[styles.roleText, role === 'customer' && styles.roleTextActive]}>Customer</Text>
+                <Ionicons 
+                  name="person" 
+                  size={18} 
+                  color={role === 'customer' ? COLORS.oliveDark : COLORS.textLight} 
+                  style={{ marginRight: 6 }}
+                />
+                <Text style={[styles.segmentText, role === 'customer' && styles.segmentTextActive]}>
+                  User
+                </Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.roleBtn, role === 'owner' && styles.roleBtnActive]}
+                style={styles.segmentBtn}
                 onPress={() => setRole('owner')}
+                activeOpacity={1}
               >
-                <Text style={[styles.roleText, role === 'owner' && styles.roleTextActive]}>Owner</Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Commented out email input
-            <View style={styles.inputWrapper}>
-              <Ionicons name="mail-outline" size={20} color={COLORS.olive} style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder="Email Address"
-                placeholderTextColor={COLORS.textLight}
-                value={email}
-                onChangeText={setEmail}
-                autoCapitalize="none"
-                keyboardType="email-address"
-              />
-            </View>
-            */}
-
-            <View style={styles.inputWrapper}>
-              <Ionicons name="call-outline" size={20} color={COLORS.olive} style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder="Mobile Number"
-                placeholderTextColor={COLORS.textLight}
-                value={phone}
-                onChangeText={setPhone}
-                keyboardType="phone-pad"
-              />
-            </View>
-
-            <View style={styles.inputWrapper}>
-              <Ionicons name="lock-closed-outline" size={20} color={COLORS.olive} style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder="Password"
-                placeholderTextColor={COLORS.textLight}
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry={!showPassword}
-              />
-              <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-                <Ionicons
-                  name={showPassword ? "eye-off-outline" : "eye-outline"}
-                  size={20}
-                  color={COLORS.textLight}
+                <Ionicons 
+                  name="business" 
+                  size={18} 
+                  color={role === 'owner' ? COLORS.oliveDark : COLORS.textLight} 
+                  style={{ marginRight: 6 }}
                 />
+                <Text style={[styles.segmentText, role === 'owner' && styles.segmentTextActive]}>
+                  Owner
+                </Text>
               </TouchableOpacity>
             </View>
 
+            <View style={styles.inputContainer}>
+              <View style={styles.inputWrapper}>
+                <Ionicons name="call-outline" size={20} color={COLORS.olive} style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Mobile Number"
+                  placeholderTextColor={COLORS.textLight}
+                  value={phone}
+                  onChangeText={setPhone}
+                  keyboardType="phone-pad"
+                />
+              </View>
+
+              <View style={styles.inputWrapper}>
+                <Ionicons name="lock-closed-outline" size={20} color={COLORS.olive} style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Password"
+                  placeholderTextColor={COLORS.textLight}
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry={!showPassword}
+                />
+                <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+                  <Ionicons
+                    name={showPassword ? "eye-off-outline" : "eye-outline"}
+                    size={20}
+                    color={COLORS.textLight}
+                  />
+                </TouchableOpacity>
+              </View>
+            </View>
 
             <TouchableOpacity style={styles.forgotBtn}>
               <Text style={styles.forgotText}>Forgot Password?</Text>
@@ -160,6 +184,7 @@ export default function LoginScreen() {
               <Text style={styles.loginBtnText}>
                 {loading ? 'Please wait...' : 'Login'}
               </Text>
+              {!loading && <Ionicons name="arrow-forward" size={20} color={COLORS.oliveDark} style={{ marginLeft: 8 }} />}
             </TouchableOpacity>
 
             <View style={styles.registerContainer}>
@@ -178,7 +203,7 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.white,
+    backgroundColor: COLORS.background,
   },
   scrollContent: {
     padding: 24,
@@ -203,10 +228,11 @@ const styles = StyleSheet.create({
     height: 60,
   },
   brandName: {
-    fontSize: 28,
+    fontSize: 32,
     fontWeight: 'bold',
     color: COLORS.oliveDark,
     marginTop: 15,
+    letterSpacing: 0.5,
   },
   subtitle: {
     fontSize: 14,
@@ -220,44 +246,55 @@ const styles = StyleSheet.create({
     fontSize: SIZES.h1,
     fontWeight: 'bold',
     color: COLORS.text,
-    marginBottom: 20,
+    marginBottom: 24,
   },
-  roleContainer: {
+  segmentedContainer: {
     flexDirection: 'row',
-    marginBottom: 16,
+    height: 54,
+    backgroundColor: '#F0F0F0',
     borderRadius: SIZES.radius,
-    backgroundColor: COLORS.backgroundLight,
     padding: 4,
+    marginBottom: 24,
+    position: 'relative',
   },
-  roleBtn: {
-    flex: 1,
-    paddingVertical: 12,
-    alignItems: 'center',
-    borderRadius: SIZES.radius - 4,
-  },
-  roleBtnActive: {
-    backgroundColor: COLORS.white,
+  activeSegment: {
+    position: 'absolute',
+    top: 4,
+    bottom: 4,
+    left: 4,
+    backgroundColor: COLORS.primary,
+    borderRadius: SIZES.radius - 2,
     ...SHADOWS.light,
   },
-  roleText: {
-    fontSize: SIZES.font,
+  segmentBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1,
+  },
+  segmentText: {
+    fontSize: SIZES.medium,
     color: COLORS.textLight,
     fontWeight: '600',
   },
-  roleTextActive: {
+  segmentTextActive: {
     color: COLORS.oliveDark,
-    fontWeight: 'bold',
+    fontWeight: '700',
+  },
+  inputContainer: {
+    marginBottom: 10,
   },
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.backgroundLight,
+    backgroundColor: '#F9F9F9',
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: '#EEEEEE',
     borderRadius: SIZES.radius,
-    paddingHorizontal: 15,
+    paddingHorizontal: 16,
     marginBottom: 16,
-    height: 56,
+    height: 60,
   },
   inputIcon: {
     marginRight: 12,
@@ -269,7 +306,7 @@ const styles = StyleSheet.create({
   },
   forgotBtn: {
     alignSelf: 'flex-end',
-    marginBottom: 24,
+    marginBottom: 30,
   },
   forgotText: {
     color: COLORS.olive,
@@ -278,8 +315,9 @@ const styles = StyleSheet.create({
   },
   loginBtn: {
     backgroundColor: COLORS.primary,
-    height: 56,
+    height: 60,
     borderRadius: SIZES.radius,
+    flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
     ...SHADOWS.medium,
@@ -294,6 +332,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
+    marginTop: 10,
   },
   registerText: {
     color: COLORS.textLight,
@@ -305,3 +344,4 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   }
 });
+

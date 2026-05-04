@@ -1,5 +1,5 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,12 +10,16 @@ import {
   Image,
   KeyboardAvoidingView,
   Platform,
-  ScrollView
+  ScrollView,
+  Animated,
+  Dimensions
 } from 'react-native';
 import { COLORS, SIZES, SHADOWS } from '../../theme';
 import { Ionicons } from '@expo/vector-icons';
 import authService from '../../services/authService';
 import { useRouter } from 'expo-router';
+
+const { width } = Dimensions.get('window');
 
 export default function RegisterScreen() {
   const router = useRouter();
@@ -28,6 +32,17 @@ export default function RegisterScreen() {
   const [loading, setLoading] = useState(false);
   const [otp, setOtp] = useState('');
   const [otpSent, setOtpSent] = useState(false);
+
+  // Animation for role selector
+  const slideAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.spring(slideAnim, {
+      toValue: role === 'customer' ? 0 : 1,
+      useNativeDriver: true,
+      bounciness: 8,
+    }).start();
+  }, [role]);
 
   const handleRegister = async () => {
     if (!name || !email || !phone || !password) {
@@ -57,7 +72,6 @@ export default function RegisterScreen() {
     setLoading(true);
     try {
       await authService.register(name, email, phone, password, role, otp);
-
       Alert.alert('Success', 'Account created successfully! Please login.');
       router.replace('/login');
     } catch (error) {
@@ -67,10 +81,17 @@ export default function RegisterScreen() {
     }
   };
 
+  const selectorWidth = (width - 48 - 8) / 2;
+
+  const translateX = slideAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, selectorWidth],
+  });
+
   return (
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView
-        behavior="height"
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}
       >
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
@@ -91,92 +112,117 @@ export default function RegisterScreen() {
           <View style={styles.formContainer}>
             <Text style={styles.title}>Register</Text>
 
-            {/* Role Selection */}
-            <View style={styles.roleContainer}>
+            {/* Role Selection (Segmented Control) */}
+            <View style={styles.segmentedContainer}>
+              <Animated.View 
+                style={[
+                  styles.activeSegment, 
+                  { width: selectorWidth, transform: [{ translateX }] }
+                ]} 
+              />
               <TouchableOpacity
-                style={[styles.roleBtn, role === 'customer' && styles.roleBtnActive]}
+                style={styles.segmentBtn}
                 onPress={() => setRole('customer')}
+                activeOpacity={1}
               >
-                <Text style={[styles.roleText, role === 'customer' && styles.roleTextActive]}>customer</Text>
+                <Ionicons 
+                  name="person" 
+                  size={18} 
+                  color={role === 'customer' ? COLORS.oliveDark : COLORS.textLight} 
+                  style={{ marginRight: 6 }}
+                />
+                <Text style={[styles.segmentText, role === 'customer' && styles.segmentTextActive]}>
+                  User
+                </Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.roleBtn, role === 'owner' && styles.roleBtnActive]}
+                style={styles.segmentBtn}
                 onPress={() => setRole('owner')}
+                activeOpacity={1}
               >
-                <Text style={[styles.roleText, role === 'owner' && styles.roleTextActive]}>Owner</Text>
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.inputWrapper}>
-              <Ionicons name="person-outline" size={20} color={COLORS.olive} style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder="Full Name / Username"
-                placeholderTextColor={COLORS.textLight}
-                value={name}
-                onChangeText={setName}
-              />
-            </View>
-
-            {/* Email Field - Kept as requested */}
-            <View style={styles.inputWrapper}>
-              <Ionicons name="mail-outline" size={20} color={COLORS.olive} style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder="Email Address"
-                placeholderTextColor={COLORS.textLight}
-                value={email}
-                onChangeText={setEmail}
-                autoCapitalize="none"
-                keyboardType="email-address"
-              />
-            </View>
-
-            {/* Mobile Number Field */}
-            <View style={styles.inputWrapper}>
-              <Ionicons name="call-outline" size={20} color={COLORS.olive} style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder="Mobile Number"
-                placeholderTextColor={COLORS.textLight}
-                value={phone}
-                onChangeText={setPhone}
-                keyboardType="phone-pad"
-              />
-            </View>
-
-            <View style={styles.inputWrapper}>
-              <Ionicons name="lock-closed-outline" size={20} color={COLORS.olive} style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder="Password"
-                placeholderTextColor={COLORS.textLight}
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry={!showPassword}
-              />
-              <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-                <Ionicons
-                  name={showPassword ? "eye-off-outline" : "eye-outline"}
-                  size={20}
-                  color={COLORS.textLight}
+                <Ionicons 
+                  name="business" 
+                  size={18} 
+                  color={role === 'owner' ? COLORS.oliveDark : COLORS.textLight} 
+                  style={{ marginRight: 6 }}
                 />
+                <Text style={[styles.segmentText, role === 'owner' && styles.segmentTextActive]}>
+                  Owner
+                </Text>
               </TouchableOpacity>
             </View>
 
-            {otpSent && (
+            <View style={styles.inputContainer}>
               <View style={styles.inputWrapper}>
-                <Ionicons name="chatbubbles-outline" size={20} color={COLORS.olive} style={styles.inputIcon} />
+                <Ionicons name="person-outline" size={20} color={COLORS.olive} style={styles.inputIcon} />
                 <TextInput
                   style={styles.input}
-                  placeholder="Enter OTP"
+                  placeholder="Full Name"
                   placeholderTextColor={COLORS.textLight}
-                  value={otp}
-                  onChangeText={setOtp}
-                  keyboardType="number-pad"
+                  value={name}
+                  onChangeText={setName}
                 />
               </View>
-            )}
+
+              <View style={styles.inputWrapper}>
+                <Ionicons name="mail-outline" size={20} color={COLORS.olive} style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Email Address"
+                  placeholderTextColor={COLORS.textLight}
+                  value={email}
+                  onChangeText={setEmail}
+                  autoCapitalize="none"
+                  keyboardType="email-address"
+                />
+              </View>
+
+              <View style={styles.inputWrapper}>
+                <Ionicons name="call-outline" size={20} color={COLORS.olive} style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Mobile Number"
+                  placeholderTextColor={COLORS.textLight}
+                  value={phone}
+                  onChangeText={setPhone}
+                  keyboardType="phone-pad"
+                />
+              </View>
+
+              <View style={styles.inputWrapper}>
+                <Ionicons name="lock-closed-outline" size={20} color={COLORS.olive} style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Password"
+                  placeholderTextColor={COLORS.textLight}
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry={!showPassword}
+                />
+                <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+                  <Ionicons
+                    name={showPassword ? "eye-off-outline" : "eye-outline"}
+                    size={20}
+                    color={COLORS.textLight}
+                  />
+                </TouchableOpacity>
+              </View>
+
+              {otpSent && (
+                <View style={[styles.inputWrapper, { borderColor: COLORS.primary }]}>
+                  <Ionicons name="chatbubbles-outline" size={20} color={COLORS.olive} style={styles.inputIcon} />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Enter OTP"
+                    placeholderTextColor={COLORS.textLight}
+                    value={otp}
+                    onChangeText={setOtp}
+                    keyboardType="number-pad"
+                    autoFocus={true}
+                  />
+                </View>
+              )}
+            </View>
 
             <TouchableOpacity
               style={[styles.registerBtn, loading && { opacity: 0.7 }]}
@@ -186,6 +232,7 @@ export default function RegisterScreen() {
               <Text style={styles.registerBtnText}>
                 {loading ? 'Please wait...' : (!otpSent ? 'Send OTP' : 'Verify & Register')}
               </Text>
+              {!loading && <Ionicons name="arrow-forward" size={20} color={COLORS.oliveDark} style={{ marginLeft: 8 }} />}
             </TouchableOpacity>
 
             <View style={styles.loginLinkContainer}>
@@ -247,42 +294,53 @@ const styles = StyleSheet.create({
     color: COLORS.text,
     marginBottom: 20,
   },
-  roleContainer: {
+  segmentedContainer: {
     flexDirection: 'row',
-    marginBottom: 16,
+    height: 54,
+    backgroundColor: '#F0F0F0',
     borderRadius: SIZES.radius,
-    backgroundColor: COLORS.backgroundLight,
     padding: 4,
+    marginBottom: 24,
+    position: 'relative',
   },
-  roleBtn: {
-    flex: 1,
-    paddingVertical: 12,
-    alignItems: 'center',
-    borderRadius: SIZES.radius - 4,
-  },
-  roleBtnActive: {
-    backgroundColor: COLORS.white,
+  activeSegment: {
+    position: 'absolute',
+    top: 4,
+    bottom: 4,
+    left: 4,
+    backgroundColor: COLORS.primary,
+    borderRadius: SIZES.radius - 2,
     ...SHADOWS.light,
   },
-  roleText: {
-    fontSize: SIZES.font,
+  segmentBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1,
+  },
+  segmentText: {
+    fontSize: SIZES.medium,
     color: COLORS.textLight,
     fontWeight: '600',
   },
-  roleTextActive: {
+  segmentTextActive: {
     color: COLORS.oliveDark,
-    fontWeight: 'bold',
+    fontWeight: '700',
+  },
+  inputContainer: {
+    marginBottom: 10,
   },
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.backgroundLight,
+    backgroundColor: '#F9F9F9',
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: '#EEEEEE',
     borderRadius: SIZES.radius,
-    paddingHorizontal: 15,
+    paddingHorizontal: 16,
     marginBottom: 16,
-    height: 56,
+    height: 60,
   },
   inputIcon: {
     marginRight: 12,
@@ -294,8 +352,9 @@ const styles = StyleSheet.create({
   },
   registerBtn: {
     backgroundColor: COLORS.primary,
-    height: 56,
+    height: 60,
     borderRadius: SIZES.radius,
+    flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
     ...SHADOWS.medium,
@@ -323,3 +382,4 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   }
 });
+

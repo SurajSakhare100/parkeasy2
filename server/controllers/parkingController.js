@@ -51,31 +51,58 @@ export const getNearParkings = async (req, res) => {
 };
 
 /**
- * Search parking spots by name or address
+ * Search parking spots by name / address with optional filters:
+ *   q           - text query (name or address)
+ *   sortBy      - price_asc | price_desc | slots | distance (default: none)
+ *   maxPrice    - max pricePerHour (number)
+ *   vehicleType - car | bike
+ *   availableOnly - true → only spots with availableSlots > 0
  */
 export const searchParkings = async (req, res) => {
   try {
-    const { q } = req.query;
-    
-    if (!q || q.trim() === "") {
-      return res.status(200).json([]);
+    const { q, sortBy, maxPrice, vehicleType, availableOnly } = req.query;
+
+    // Build base filter
+    const filter = { isActive: true };
+
+    // Text search (name or address)
+    if (q && q.trim() !== "") {
+      const regex = new RegExp(q.trim(), "i");
+      filter.$or = [
+        { name: { $regex: regex } },
+        { address: { $regex: regex } },
+      ];
     }
 
-    const regex = new RegExp(q, "i");
-    const parkings = await Parking.find({
-      isActive: true,
-      $or: [
-        { name: { $regex: regex } },
-        { locationText: { $regex: regex } }
-      ]
-    });
-    
+    // Price ceiling
+    if (maxPrice) {
+      filter.pricePerHour = { $lte: parseFloat(maxPrice) };
+    }
+
+    // Vehicle type
+    if (vehicleType && vehicleType !== "all") {
+      filter.vehicleType = vehicleType;
+    }
+
+    // Available slots only
+    if (availableOnly === "true") {
+      filter.availableSlots = { $gt: 0 };
+    }
+
+    // Sort mapping
+    let sortOption = {};
+    if (sortBy === "price_asc")  sortOption = { pricePerHour: 1 };
+    if (sortBy === "price_desc") sortOption = { pricePerHour: -1 };
+    if (sortBy === "slots")      sortOption = { availableSlots: -1 };
+    // distance sort requires $geoNear — handled client-side for now
+
+    const parkings = await Parking.find(filter).sort(sortOption);
     res.status(200).json(parkings);
   } catch (error) {
     console.error("Search parkings error:", error);
-    res.status(500).json({ 
-      message: "Server Error while searching parkings", 
-      error: error.message 
+    res.status(500).json({
+      message: "Server Error while searching parkings",
+      error: error.message,
     });
   }
 };

@@ -19,11 +19,13 @@ const parkingService = {
     return response.data;
   },
   /**
-   * Search parking spots by query
+   * Search parking spots by query + optional filters
+   * @param {string} query  - text to search
+   * @param {object} filters - { sortBy, maxPrice, vehicleType, availableOnly }
    */
-  searchParkings: async (query) => {
+  searchParkings: async (query, filters = {}) => {
     const response = await api.get('/parking/search', {
-      params: { q: query }
+      params: { q: query, ...filters }
     });
     return response.data;
   },

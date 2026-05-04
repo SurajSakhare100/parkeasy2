@@ -1,13 +1,12 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity, Platform } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SIZES, SHADOWS } from '../../theme';
 import FilterModal from '../../components/FilterModal';
 import { useRouter } from 'expo-router';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import * as Location from 'expo-location';
-import axios from 'axios';
 import parkingService from '../../services/parkingService';
 import userService from '../../services/userService';
 import { useIsFocused } from '@react-navigation/native';
@@ -20,34 +19,130 @@ const FALLBACK_PARKING_IMAGES = [
   'https://images.unsplash.com/photo-1590674899484-13da0d1b58f5?w=800&fit=crop',
 ];
 
+// Keys for persisting location permission + last known coords
+const LOC_PERMISSION_KEY = 'locationPermissionGranted';
+const LOC_CITY_KEY       = 'lastKnownCity';
+const LOC_COORDS_KEY     = 'lastKnownCoords';
+
 export default function UserHomeScreen() {
   const [filterVisible, setFilterVisible] = useState(false);
-  const [location, setLocation] = useState(null);
-  const [errorMsg, setErrorMsg] = useState(null);
-  const [parkings, setParkings] = useState([]);
+  const [userLocation, setUserLocation] = useState(null);
+  const [cityName, setCityName] = useState('Locating…');
+  const [allParkings, setAllParkings] = useState([]);   // master list (never mutated)
+  const [parkings, setParkings] = useState([]);          // filtered / sorted view
+  const [activeFilters, setActiveFilters] = useState(null); // null = no filter active
   const [selectedParking, setSelectedParking] = useState(null);
   const [region, setRegion] = useState({
-    latitude: 18.5204, // Default to Pune
+    latitude: 18.5204,
     longitude: 73.8567,
-    latitudeDelta: 0.05, // Slightly wider to show all 3 new locations
+    latitudeDelta: 0.05,
     longitudeDelta: 0.05,
   });
 
+  const mapRef = useRef(null);
   const navigation = useRouter();
   const isFocused = useIsFocused();
   const [savedParkingIds, setSavedParkingIds] = useState([]);
 
+  // ─── Apply filters to the master parking list ───────────────────────────────
+  const applyFilters = (all, filters) => {
+    if (!filters) return all;
+    let result = [...all];
+
+    // Max price
+    if (filters.maxPrice) {
+      result = result.filter(p => p.pricePerHour <= parseFloat(filters.maxPrice));
+    }
+    // Vehicle type
+    if (filters.vehicleType && filters.vehicleType !== 'all') {
+      result = result.filter(p =>
+        Array.isArray(p.vehicleType)
+          ? p.vehicleType.includes(filters.vehicleType)
+          : p.vehicleType === filters.vehicleType
+      );
+    }
+    // Available only
+    if (filters.availableOnly === 'true') {
+      result = result.filter(p => p.availableSlots > 0);
+    }
+    // Sort
+    if (filters.sortBy === 'price_asc')  result.sort((a, b) => a.pricePerHour - b.pricePerHour);
+    if (filters.sortBy === 'price_desc') result.sort((a, b) => b.pricePerHour - a.pricePerHour);
+    if (filters.sortBy === 'slots')      result.sort((a, b) => b.availableSlots - a.availableSlots);
+
+    return result;
+  };
+
+  const handleApplyFilters = (filters) => {
+    setActiveFilters(filters);
+    const filtered = applyFilters(allParkings, filters);
+    setParkings(filtered);
+    setSelectedParking(filtered[0] || null);
+  };
+
+  const handleClearFilters = () => {
+    setActiveFilters(null);
+    setParkings(allParkings);
+    setSelectedParking(allParkings[0] || null);
+  };
+
+  const activeFilterCount = activeFilters
+    ? Object.values(activeFilters).filter(
+        v => v && v !== 'distance' && v !== 'all' && v !== 'false'
+      ).length
+    : 0;
+
+  // ─── Location: ask once, persist result ─────────────────────────────────────
   useEffect(() => {
     (async () => {
-      let { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
-        setErrorMsg('Permission to access location was denied');
-        return;
-      }
+      try {
+        // 1. Check if we already got permission before
+        const cached = await AsyncStorage.getItem(LOC_PERMISSION_KEY);
 
-      let currentLocation = await Location.getCurrentPositionAsync({});
-      setLocation(currentLocation);
-      // Only auto-center if we don't have parking spots yet or user wants to center
+        let granted = cached === 'true';
+        if (!granted) {
+          // Ask the user ONCE
+          const { status } = await Location.requestForegroundPermissionsAsync();
+          granted = status === 'granted';
+          await AsyncStorage.setItem(LOC_PERMISSION_KEY, granted ? 'true' : 'false');
+        }
+
+        if (!granted) {
+          // Restore last known city from cache if any
+          const savedCity   = await AsyncStorage.getItem(LOC_CITY_KEY);
+          const savedCoords = await AsyncStorage.getItem(LOC_COORDS_KEY);
+          if (savedCity)   setCityName(savedCity);
+          if (savedCoords) {
+            const c = JSON.parse(savedCoords);
+            setUserLocation(c);
+            setRegion(r => ({ ...r, latitude: c.latitude, longitude: c.longitude }));
+          }
+          return;
+        }
+
+        // 2. Get real GPS position
+        const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+        const coords = { latitude: pos.coords.latitude, longitude: pos.coords.longitude };
+        setUserLocation(coords);
+
+        // 3. Center map on user
+        setRegion(r => ({ ...r, ...coords }));
+        mapRef.current?.animateToRegion({ ...region, ...coords }, 800);
+
+        // 4. Reverse-geocode to get real city name
+        const [place] = await Location.reverseGeocodeAsync(coords);
+        const city = place?.city || place?.subregion || place?.region || 'Unknown';
+        const area = place?.district || place?.subregion || city;
+        setCityName(`${area}, ${place?.region || 'India'}`);
+
+        // 5. Persist for next launch (don't re-fetch immediately)
+        await AsyncStorage.setItem(LOC_CITY_KEY, `${area}, ${place?.region || 'India'}`);
+        await AsyncStorage.setItem(LOC_COORDS_KEY, JSON.stringify(coords));
+
+      } catch (err) {
+        console.error('Location error:', err);
+        setCityName('Location unavailable');
+      }
     })();
 
     fetchParkings();
@@ -75,9 +170,9 @@ export default function UserHomeScreen() {
   const handleToggleBookmark = async (parkingId) => {
     try {
       await userService.toggleSavedParking(parkingId);
-      setSavedParkingIds(prev => 
-        prev.includes(parkingId) 
-          ? prev.filter(id => id !== parkingId) 
+      setSavedParkingIds(prev =>
+        prev.includes(parkingId)
+          ? prev.filter(id => id !== parkingId)
           : [...prev, parkingId]
       );
     } catch (error) {
@@ -88,41 +183,43 @@ export default function UserHomeScreen() {
   const fetchParkings = async () => {
     try {
       const data = await parkingService.getAllParkings();
-      setParkings(data);
-      if (data.length > 0) {
-        setSelectedParking(data[0]); // Select first one by default
-        // Center map on first parking
-        setRegion({
-          ...region,
-          latitude: data[0].location.coordinates[1],
-          longitude: data[0].location.coordinates[0],
-        });
-      }
+      setAllParkings(data);                        // store master
+      setParkings(data);                           // show all by default
+      if (data.length > 0) setSelectedParking(data[0]);
     } catch (error) {
-      // Error is already logged in api.js interceptor
+      // Error logged in api.js interceptor
     }
   };
 
   const handleMarkerPress = (parking) => {
     setSelectedParking(parking);
-    // Smoothly pan to the selected parking
-    setRegion({
-      ...region,
+    setRegion(r => ({
+      ...r,
       latitude: parking.location.coordinates[1],
       longitude: parking.location.coordinates[0],
-    });
+    }));
+  };
+
+  // Button to snap map back to user's position
+  const handleCenterOnUser = () => {
+    if (userLocation) {
+      const next = { ...region, ...userLocation };
+      setRegion(next);
+      mapRef.current?.animateToRegion(next, 600);
+    }
   };
 
   return (
     <View style={styles.container}>
-      {/* Real Google Map */}
+      {/* Real Google Map — showsUserLocation shows the blue dot */}
       <MapView
+        ref={mapRef}
         provider={PROVIDER_GOOGLE}
         style={styles.map}
         initialRegion={region}
         region={region}
         showsUserLocation={true}
-        followsUserLocation={true}
+        showsMyLocationButton={false}   // we render our own button
       >
         {parkings.map((parking) => (
           <Marker
@@ -149,21 +246,19 @@ export default function UserHomeScreen() {
         ))}
       </MapView>
 
-      {/* Semi-transparent overlay to make elements pop */}
+      {/* Light overlay */}
       <View style={styles.mapOverlay} pointerEvents="none" />
 
       <SafeAreaView style={styles.safeArea} pointerEvents="box-none">
-        {/* Top Header Section */}
+        {/* Top Header */}
         <View style={styles.header}>
           <View style={styles.locationRow}>
             <View style={styles.locationIconWrapper}>
               <Ionicons name="location" size={18} color="#A08A38" />
             </View>
-            <View>
-              <Text style={styles.locationLabel}>Location</Text>
-              <Text style={styles.locationText}>
-                {selectedParking ? selectedParking.name.split(' ')[0] : 'Pune'}, Maharashtra
-              </Text>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.locationLabel}>Your location</Text>
+              <Text style={styles.locationText} numberOfLines={1}>{cityName}</Text>
             </View>
             <TouchableOpacity style={styles.bellIcon}>
               <Ionicons name="notifications-outline" size={24} color={COLORS.text} />
@@ -178,21 +273,53 @@ export default function UserHomeScreen() {
               activeOpacity={0.8}
             >
               <Ionicons name="search" size={20} color={COLORS.oliveDark} style={{ marginRight: 10 }} />
-              <Text style={{ color: COLORS.textLight, flex: 1, fontSize: SIZES.medium }}>Search for parking</Text>
+              <Text style={{ color: COLORS.textLight, flex: 1, fontSize: SIZES.medium }}>
+                Search for parking
+              </Text>
             </TouchableOpacity>
+            {/* Filter button with active badge */}
             <TouchableOpacity style={styles.filterIcon} onPress={() => setFilterVisible(true)}>
-              <Ionicons name="options-outline" size={22} color={COLORS.oliveDark} />
+              <Ionicons
+                name="options-outline"
+                size={22}
+                color={activeFilterCount > 0 ? COLORS.oliveDark : COLORS.oliveDark}
+              />
+              {activeFilterCount > 0 && (
+                <View style={styles.filterBadge}>
+                  <Text style={styles.filterBadgeText}>{activeFilterCount}</Text>
+                </View>
+              )}
             </TouchableOpacity>
           </View>
+
+          {/* Active filter chip — tap to clear */}
+          {activeFilters && (
+            <TouchableOpacity style={styles.activeFilterChip} onPress={handleClearFilters}>
+              <Ionicons name="funnel" size={12} color="#333" style={{ marginRight: 4 }} />
+              <Text style={styles.activeFilterChipText}>
+                {parkings.length} result{parkings.length !== 1 ? 's' : ''} · Tap to clear
+              </Text>
+              <Ionicons name="close-circle" size={14} color="#555" style={{ marginLeft: 4 }} />
+            </TouchableOpacity>
+          )}
         </View>
 
-        {/* Bottom Card Area */}
+        {/* Recenter-to-user FAB */}
+        {userLocation && (
+          <TouchableOpacity style={styles.myLocationBtn} onPress={handleCenterOnUser}>
+            <Ionicons name="locate" size={22} color={COLORS.oliveDark} />
+          </TouchableOpacity>
+        )}
+
+        {/* Bottom Card */}
         {selectedParking && (
           <View style={styles.bottomCardContainer}>
             <TouchableOpacity
               style={styles.parkingCard}
               activeOpacity={0.9}
-              onPress={() => navigation.push({ pathname: '/parking-details', params: { parking: JSON.stringify(selectedParking) } })}
+              onPress={() =>
+                navigation.push({ pathname: '/parking-details', params: { parking: JSON.stringify(selectedParking) } })
+              }
             >
               <Image
                 source={{
@@ -214,20 +341,20 @@ export default function UserHomeScreen() {
 
               <View style={styles.cardBottom}>
                 <View>
-                  <Text style={styles.priceText}>₹{selectedParking.pricePerHour}<Text style={styles.priceUnit}>/hr</Text></Text>
-                  <Text style={styles.availabilityText}>
-                    {selectedParking.availableSlots} spots left
+                  <Text style={styles.priceText}>
+                    ₹{selectedParking.pricePerHour}<Text style={styles.priceUnit}>/hr</Text>
                   </Text>
+                  <Text style={styles.availabilityText}>{selectedParking.availableSlots} spots left</Text>
                 </View>
                 <View style={styles.actions}>
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     style={styles.bookmarkBtn}
                     onPress={() => handleToggleBookmark(selectedParking._id)}
                   >
-                    <Ionicons 
-                      name={savedParkingIds.includes(selectedParking._id) ? "bookmark" : "bookmark-outline"} 
-                      size={22} 
-                      color={COLORS.primary} 
+                    <Ionicons
+                      name={savedParkingIds.includes(selectedParking._id) ? 'bookmark' : 'bookmark-outline'}
+                      size={22}
+                      color={COLORS.primary}
                     />
                   </TouchableOpacity>
                   <TouchableOpacity
@@ -235,9 +362,7 @@ export default function UserHomeScreen() {
                     onPress={() =>
                       navigation.push({
                         pathname: '/parking-details',
-                        params: {
-                          parking: JSON.stringify(selectedParking),
-                        },
+                        params: { parking: JSON.stringify(selectedParking) },
                       })
                     }
                   >
@@ -247,50 +372,32 @@ export default function UserHomeScreen() {
               </View>
             </TouchableOpacity>
           </View>
-        )
-        }
-
-      </SafeAreaView >
+        )}
+      </SafeAreaView>
 
       <FilterModal
         visible={filterVisible}
         onClose={() => setFilterVisible(false)}
         onApply={(filters) => {
-          console.log("Applied Filters:", filters);
-          // In a real app we'd dispatch filtering logic here!
+          handleApplyFilters(filters);
         }}
       />
-    </View >
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  map: {
-    ...StyleSheet.absoluteFillObject,
-  },
+  container: { flex: 1 },
+  map: { ...StyleSheet.absoluteFillObject },
   mapOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)', // Lighter overlay for better map visibility
+    backgroundColor: 'rgba(255,255,255,0.18)',
   },
-  customMarker: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  markerIcon: {
-    width: 35,
-    height: 35,
-    resizeMode: 'contain',
-  },
-  safeArea: {
-    flex: 1,
-  },
-  header: {
-    paddingHorizontal: 20,
-    paddingTop: 10,
-  },
+  customMarker: { alignItems: 'center', justifyContent: 'center' },
+  markerIcon: { width: 35, height: 35, resizeMode: 'contain' },
+  selectedMarker: { transform: [{ scale: 1.2 }], zIndex: 99 },
+  safeArea: { flex: 1 },
+  header: { paddingHorizontal: 20, paddingTop: 10 },
   locationRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -305,17 +412,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginRight: 10,
   },
-  locationLabel: {
-    fontSize: 12,
-    color: '#8E8E93',
-  },
+  locationLabel: { fontSize: 12, color: '#8E8E93' },
   locationText: {
     fontSize: SIZES.medium,
     fontWeight: 'bold',
     color: '#333',
+    maxWidth: 200,
   },
   bellIcon: {
-    marginLeft: 'auto',
     width: 40,
     height: 40,
     borderRadius: 20,
@@ -335,27 +439,56 @@ const styles = StyleSheet.create({
     borderColor: '#E0E0E0',
     ...SHADOWS.light,
   },
-  searchInputMock: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
+  searchInputMock: { flex: 1, flexDirection: 'row', alignItems: 'center' },
   filterIcon: {
     marginLeft: 10,
     paddingLeft: 10,
     borderLeftWidth: 1,
     borderLeftColor: '#E0E0E0',
+    position: 'relative',
   },
-  pin: {
+  filterBadge: {
     position: 'absolute',
-    width: 30,
-    height: 30,
-    borderRadius: 15,
+    top: -6,
+    right: -6,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
     backgroundColor: COLORS.primary,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#FFF',
+  },
+  filterBadgeText: {
+    fontSize: 9,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  activeFilterChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    backgroundColor: COLORS.primary,
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    marginTop: 10,
+  },
+  activeFilterChipText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#333',
+  },
+  // Recenter FAB — bottom-right above card
+  myLocationBtn: {
+    position: 'absolute',
+    right: 20,
+    bottom: 280,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: COLORS.surface,
+    justifyContent: 'center',
+    alignItems: 'center',
     ...SHADOWS.medium,
   },
   pinPrice: {
@@ -366,11 +499,7 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
     borderRadius: 10,
   },
-  pinPriceText: {
-    color: '#FFF',
-    fontSize: 10,
-    fontWeight: 'bold',
-  },
+  pinPriceText: { color: '#FFF', fontSize: 10, fontWeight: 'bold' },
   bottomCardContainer: {
     position: 'absolute',
     bottom: 120,
@@ -401,59 +530,24 @@ const styles = StyleSheet.create({
     color: COLORS.text,
     marginBottom: 4,
   },
-  cardAddress: {
-    fontSize: SIZES.small,
-    color: COLORS.textLight,
-  },
-  ratingBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  ratingText: {
-    fontSize: SIZES.medium,
-    fontWeight: 'bold',
-    marginLeft: 4,
-  },
+  cardAddress: { fontSize: SIZES.small, color: COLORS.textLight },
+  ratingBadge: { flexDirection: 'row', alignItems: 'center' },
+  ratingText: { fontSize: SIZES.medium, fontWeight: 'bold', marginLeft: 4 },
   cardBottom: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  priceText: {
-    fontSize: SIZES.large,
-    fontWeight: 'bold',
-    color: COLORS.olive,
-  },
-  priceUnit: {
-    fontSize: SIZES.font,
-    color: COLORS.textLight,
-    fontWeight: 'normal',
-  },
-  actions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  bookmarkBtn: {
-    marginRight: 15,
-  },
+  priceText: { fontSize: SIZES.large, fontWeight: 'bold', color: COLORS.olive },
+  priceUnit: { fontSize: SIZES.font, color: COLORS.textLight, fontWeight: 'normal' },
+  actions: { flexDirection: 'row', alignItems: 'center' },
+  bookmarkBtn: { marginRight: 15 },
   bookBtn: {
     backgroundColor: COLORS.primary,
     paddingHorizontal: 25,
     paddingVertical: 12,
     borderRadius: 8,
   },
-  bookBtnText: {
-    fontWeight: 'bold',
-    color: '#333',
-    fontSize: SIZES.font,
-  },
-  availabilityText: {
-    fontSize: 12,
-    color: '#666',
-    marginTop: 2,
-  },
-  selectedMarker: {
-    transform: [{ scale: 1 }],
-    zIndex: 99,
-  }
+  bookBtnText: { fontWeight: 'bold', color: '#333', fontSize: SIZES.font },
+  availabilityText: { fontSize: 12, color: '#666', marginTop: 2 },
 });

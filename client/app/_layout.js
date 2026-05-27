@@ -10,6 +10,8 @@ export default function RootLayout() {
   const [userRole, setUserRole] = useState(null);
   const router = useRouter();
   const segments = useSegments();
+
+  
   const navigationState = useRootNavigationState();
 
   useEffect(() => {

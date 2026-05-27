@@ -10,9 +10,6 @@ export default function RootLayout() {
   const [userRole, setUserRole] = useState(null);
   const router = useRouter();
   const segments = useSegments();
-  // ← KEY FIX: navigationState.key is undefined until the navigator is mounted.
-  // Without this guard, router.replace() fires too early and silently fails,
-  // leaving the app stuck on the loading screen forever.
   const navigationState = useRootNavigationState();
 
   useEffect(() => {

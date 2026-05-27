@@ -14,7 +14,17 @@ import uploadRoutes from "./routes/upload.js";
 const app = express();
 
 // Middleware
-app.use(cors());
+// Allow a configurable list of origins (set CORS_ORIGINS in env as comma-separated list)
+const allowedOrigins = (process.env.CORS_ORIGINS || "http://103.185.160.176:5000,http://localhost:19006,http://localhost:19000").split(",");
+app.use(cors({
+  origin: (origin, callback) => {
+    // allow requests with no origin (mobile apps, curl, server-to-server)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.indexOf(origin) !== -1) return callback(null, true);
+    return callback(new Error('Not allowed by CORS'));
+  },
+  credentials: true,
+}));
 app.use(express.json({ limit: "10mb" })); // Higher limit for QR base64 images
 
 // Routes

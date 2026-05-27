@@ -1,5 +1,5 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
-import React, { useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
   Alert, ActivityIndicator, Platform
@@ -38,7 +38,12 @@ export default function BookingScreen() {
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams();
   
-  const parking = params?.parking ? (typeof params.parking === 'string' ? JSON.parse(params.parking) : params.parking) : null;
+  const parking = useMemo(() => {
+    if (!params?.parking) return null;
+    return typeof params.parking === 'string'
+      ? JSON.parse(params.parking)
+      : params.parking;
+  }, [params?.parking]);
 
   if (!parking) {
     return (
@@ -48,13 +53,26 @@ export default function BookingScreen() {
     );
   }
 
-  const [vehicleType, setVehicleType] = useState('car');
-  const [selectedHours, setSelectedHours] = useState(params?.selectedDuration ? parseInt(params.selectedDuration) : 1);
-  const [selectedSlot, setSelectedSlot] = useState(null);
+  const [vehicleType, setVehicleType] = useState(params?.vehicleType || 'car');
+  const [selectedHours, setSelectedHours] = useState(params?.selectedDuration ? parseInt(params.selectedDuration, 10) : 1);
+  const [selectedSlot, setSelectedSlot] = useState(params?.selectedSlot || null);
   const [loading, setLoading] = useState(false);
 
-  // Date & Time states
-  const [startDate, setStartDate] = useState(new Date());
+  const [startDate, setStartDate] = useState(
+    params?.startDate ? new Date(params.startDate) : new Date()
+  );
+
+  useEffect(() => {
+    if (params?.vehicleType) setVehicleType(params.vehicleType);
+    if (params?.selectedSlot) setSelectedSlot(params.selectedSlot);
+    if (params?.selectedDuration) setSelectedHours(parseInt(params.selectedDuration, 10));
+    if (params?.startDate) {
+      const parsed = new Date(params.startDate);
+      if (!Number.isNaN(parsed.getTime())) {
+        setStartDate(parsed);
+      }
+    }
+  }, [params?.vehicleType, params?.selectedSlot, params?.selectedDuration, params?.startDate]);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
 
@@ -214,32 +232,30 @@ export default function BookingScreen() {
           ))}
         </View>
 
-        {/* ── SPOT SELECTION (Grid) ── */}
-        <SectionHeader title="Select Parking Spot" subtitle="Pick a specific spot for your arrival" />
-        <View style={styles.spotGrid}>
-          {(parking.spots && parking.spots.length > 0 
-            ? parking.spots.filter(s => s.vehicleType === vehicleType)
-            : Array.from({ length: 10 }, (_, i) => ({ spotName: `A${i + 1}`, vehicleType }))
-          ).map((spot, i) => (
-            <TouchableOpacity 
-              key={i} 
-              style={[
-                styles.spotItem, 
-                selectedSlot === spot.spotName && styles.spotItemActive
-              ]}
-              onPress={() => setSelectedSlot(spot.spotName)}
-            >
-              <Ionicons 
-                  name={vehicleType === 'car' ? "car" : "bicycle"} 
-                  size={16} 
-                  color={selectedSlot === spot.spotName ? "#FFF" : COLORS.oliveDark} 
-              />
-              <Text style={[
-                styles.spotItemText,
-                selectedSlot === spot.spotName && styles.spotItemTextActive
-              ]}>{spot.spotName}</Text>
-            </TouchableOpacity>
-          ))}
+        {/* ── SLOT SELECTION NAVIGATION ── */}
+        <SectionHeader title="Slot Selection" subtitle="Choose your vehicle type and select a spot separately" />
+        <View style={styles.slotSummaryCard}>
+          <View style={styles.slotSummaryLeft}>
+            <Text style={styles.slotSummaryLabel}>Selected vehicle</Text>
+            <Text style={styles.slotSummaryValue}>{vehicleType === 'car' ? 'Car' : 'Bike'}</Text>
+            <Text style={styles.slotSummaryLabel}>Chosen slot</Text>
+            <Text style={styles.slotSummaryValue}>{selectedSlot || 'No slot selected yet'}</Text>
+          </View>
+          <TouchableOpacity
+            style={styles.chooseSlotButton}
+            onPress={() => router.push({
+              pathname: '/(user)/slot-selection',
+              params: {
+                parking: JSON.stringify(parking),
+                vehicleType,
+                selectedDuration: selectedHours.toString(),
+                startDate: startDate.toISOString(),
+                selectedSlot,
+              }
+            })}
+          >
+            <Text style={styles.chooseSlotText}>{selectedSlot ? 'Change Slot' : 'Choose Slot'}</Text>
+          </TouchableOpacity>
         </View>
 
         {/* ── FARE SUMMARY ── */}
@@ -342,14 +358,18 @@ const styles = StyleSheet.create({
   durationChipText: { fontSize: 13, color: '#999', fontWeight: '600' },
   durationChipTextActive: { color: '#4C4223' },
 
-  spotGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 20 },
-  spotItem: {
-      width: '23%', height: 50, backgroundColor: '#FFF', borderRadius: 10, justifyContent: 'center', alignItems: 'center', gap: 4,
-      borderWidth: 1, borderColor: '#EEE', ...SHADOWS.light
+  slotSummaryCard: {
+    backgroundColor: '#FFF', borderRadius: 16, padding: 18, marginBottom: 20, ...SHADOWS.light,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between'
   },
-  spotItemActive: { backgroundColor: COLORS.oliveDark, borderColor: COLORS.oliveDark },
-  spotItemText: { fontSize: 12, fontWeight: 'bold', color: '#666' },
-  spotItemTextActive: { color: '#FFF' },
+  slotSummaryLeft: { flex: 1, marginRight: 10 },
+  slotSummaryLabel: { fontSize: 12, color: '#999', marginBottom: 2 },
+  slotSummaryValue: { fontSize: 14, fontWeight: '700', color: '#333', marginBottom: 8 },
+  chooseSlotButton: {
+    backgroundColor: COLORS.oliveDark, paddingVertical: 14, paddingHorizontal: 18, borderRadius: 14,
+    justifyContent: 'center', alignItems: 'center'
+  },
+  chooseSlotText: { color: '#FFF', fontWeight: '700', fontSize: 13 },
 
   fareCard: { backgroundColor: '#FFF', borderRadius: 14, padding: 16, ...SHADOWS.light },
   fareTitle: { fontSize: 14, fontWeight: 'bold', color: '#333', marginBottom: 12 },

@@ -42,6 +42,7 @@ export default function UserLayout() {
       <Tabs.Screen name="index" options={{ href: null }} />
       <Tabs.Screen name="parking-details" options={{ href: null, tabBarStyle: { display: 'none' } }} />
       <Tabs.Screen name="booking" options={{ href: null, tabBarStyle: { display: 'none' } }} />
+      <Tabs.Screen name="slot-selection" options={{ href: null, tabBarStyle: { display: 'none' } }} />
       <Tabs.Screen name="payment" options={{ href: null, tabBarStyle: { display: 'none' } }} />
       <Tabs.Screen name="ticket" options={{ href: null, tabBarStyle: { display: 'none' } }} />
     </Tabs>

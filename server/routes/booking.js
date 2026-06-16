@@ -5,6 +5,7 @@ import {
   getBookingById,
   cancelBooking,
   getOwnerBookings,
+  scanBookingByToken,
   getOwnerAnalytics
 } from "../controllers/bookingController.js";
 import { protect } from "../middleware/auth.js";
@@ -16,6 +17,9 @@ router.post("/create", protect, createBooking);
 
 // GET /api/booking/my-bookings
 router.get("/my-bookings", protect, getMyBookings);
+
+// GET /api/booking/scan/:qrToken
+router.get("/scan/:qrToken", protect, scanBookingByToken);
 
 // GET /api/booking/:bookingId
 router.get("/:bookingId", protect, getBookingById);

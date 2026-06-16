@@ -1,5 +1,7 @@
 import Razorpay from "razorpay";
 import crypto from "crypto";
+import QRCode from "qrcode";
+import cloudinary from "../config/cloudinary.js";
 import Payment from "../models/Payment.js";
 import Booking from "../models/Booking.js";
 
@@ -116,6 +118,27 @@ export const verifyPayment = async (req, res) => {
       },
       { new: true }
     ).populate("parkingId");
+
+    // Generate QR code only after successful payment
+    try {
+      const qrToken = crypto.randomBytes(16).toString("hex");
+      const qrScanUrl = `${process.env.QR_SCAN_URL_BASE || process.env.SERVER_URL || "https://parkeasy.example.com"}/api/booking/scan/${qrToken}`;
+      const qrCodeDataUrl = await QRCode.toDataURL(qrScanUrl);
+      const uploadResult = await cloudinary.uploader.upload(qrCodeDataUrl, {
+        folder: "parkeasy/qrcodes",
+        public_id: `qr_${qrToken}`,
+        overwrite: true,
+        resource_type: "image",
+      });
+
+      booking.qrCode = qrToken;
+      booking.qrCodeImage = uploadResult.secure_url;
+      booking.qrScanUrl = qrScanUrl;
+      await booking.save();
+    } catch (err) {
+      console.error('QR generation/upload failed:', err);
+      // Do not fail payment because QR upload failed; continue.
+    }
 
     console.log(`Payment verified for booking: ${bookingId}`);
 

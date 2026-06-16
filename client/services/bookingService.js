@@ -48,6 +48,13 @@ const bookingService = {
     const res = await api.get('/booking/owner/analytics');
     return res.data;
   },
+  /**
+   * Scan booking by QR token (owner)
+   */
+  scanByToken: async (qrToken) => {
+    const res = await api.get(`/booking/scan/${qrToken}`);
+    return res.data;
+  },
 };
 
 export default bookingService;

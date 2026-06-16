@@ -77,7 +77,19 @@ export default function UserHomeScreen() {
     setActiveFilters(filters);
     const filtered = applyFilters(allParkings, filters);
     setParkings(filtered);
-    setSelectedParking(filtered[0] || null);
+    const first = filtered[0] || null;
+    setSelectedParking(first);
+    // If we have a first result, center map on it
+    if (first && mapRef.current) {
+      const next = {
+        latitude: first.location.coordinates[1],
+        longitude: first.location.coordinates[0],
+        latitudeDelta: 0.02,
+        longitudeDelta: 0.02,
+      };
+      setRegion(next);
+      mapRef.current.animateToRegion(next, 600);
+    }
   };
 
   const handleClearFilters = () => {

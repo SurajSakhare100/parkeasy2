@@ -26,7 +26,13 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
-    console.error('API Error:', error.response?.data || error.message);
+    let msg;
+    try {
+      msg = error?.response?.data || error?.message || String(error);
+    } catch (e) {
+      msg = String(error);
+    }
+    console.error('API Error:', msg);
     
     // Redirect to login if 401 Unauthorized
     if (error.response && error.response.status === 401) {

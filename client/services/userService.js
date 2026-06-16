@@ -24,6 +24,11 @@ const userService = {
   addSearchHistory: async (query) => {
     const response = await api.post('/user/search/history', { query });
     return response.data;
+  },
+
+  deleteSearchHistory: async (historyId) => {
+    const response = await api.delete(`/user/search/history/${historyId}`);
+    return response.data;
   }
 };
 

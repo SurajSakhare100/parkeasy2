@@ -50,14 +50,7 @@ export const getNearParkings = async (req, res) => {
   }
 };
 
-/**
- * Search parking spots by name / address with optional filters:
- *   q           - text query (name or address)
- *   sortBy      - price_asc | price_desc | slots | distance (default: none)
- *   maxPrice    - max pricePerHour (number)
- *   vehicleType - car | bike
- *   availableOnly - true → only spots with availableSlots > 0
- */
+
 export const searchParkings = async (req, res) => {
   try {
     const { q, sortBy, maxPrice, vehicleType, availableOnly } = req.query;
@@ -75,13 +68,16 @@ export const searchParkings = async (req, res) => {
     }
 
     // Price ceiling
-    if (maxPrice) {
-      filter.pricePerHour = { $lte: parseFloat(maxPrice) };
+    if (maxPrice !== undefined && maxPrice !== null && maxPrice !== "") {
+      const priceLimit = parseFloat(maxPrice);
+      if (!Number.isNaN(priceLimit)) {
+        filter.pricePerHour = { $lte: priceLimit };
+      }
     }
 
     // Vehicle type
     if (vehicleType && vehicleType !== "all") {
-      filter.vehicleType = vehicleType;
+      filter.vehicleType = { $in: [vehicleType] };
     }
 
     // Available slots only

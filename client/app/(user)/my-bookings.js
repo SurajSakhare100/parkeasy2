@@ -157,7 +157,7 @@ export default function MyBookingsScreen() {
                     onPress={() => navigation.push({
                       pathname: '/ticket',
                       params: {
-                        booking: {
+                        booking: JSON.stringify({
                           id: item._id,
                           parkingName: parking?.name,
                           address: parking?.address,
@@ -168,7 +168,7 @@ export default function MyBookingsScreen() {
                           qrCode: item.qrCode,
                           qrCodeImage: item.qrCodeImage,
                           status: item.status,
-                        }
+                        })
                       }
                     })}
                   >

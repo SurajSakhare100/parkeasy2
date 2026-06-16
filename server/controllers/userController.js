@@ -115,3 +115,26 @@ export const addSearchHistory = async (req, res) => {
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
+
+/**
+ * Delete a search history record
+ */
+export const deleteSearchHistory = async (req, res) => {
+  try {
+    const { historyId } = req.params;
+    const historyItem = await SearchHistory.findOne({
+      _id: historyId,
+      userId: req.user.userId,
+    });
+
+    if (!historyItem) {
+      return res.status(404).json({ message: "Search history item not found" });
+    }
+
+    await historyItem.deleteOne();
+    res.status(200).json({ message: "Search history removed", historyId });
+  } catch (error) {
+    console.error("Delete search history error:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};

@@ -2,8 +2,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import React, { useEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity,
-  Platform, ScrollView, Image, Share, Animated
+  Platform, ScrollView, Image, Share, Animated, Alert
 } from 'react-native';
+import * as FileSystem from 'expo-file-system';
+import * as MediaLibrary from 'expo-media-library';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { COLORS, SIZES, SHADOWS } from '../../theme';
@@ -19,9 +21,29 @@ function formatDateTime(isoString) {
 export default function TicketScreen() {
   const navigation = useRouter();
   const params = useLocalSearchParams();
-  const { booking } = params;
+  let booking = params.booking;
+  if (typeof booking === 'string') {
+    try {
+      booking = JSON.parse(booking);
+    } catch (error) {
+      console.warn('Unable to parse booking param:', error);
+    }
+  }
 
   const scaleAnim = useRef(new Animated.Value(0)).current;
+
+  if (!booking) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={[styles.center, { padding: 24 }]}> 
+          <Text style={{ fontSize: 16, color: COLORS.textLight, textAlign: 'center' }}>
+            Booking details are missing. Please open your ticket from My Bookings again.
+          </Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -51,6 +73,46 @@ export default function TicketScreen() {
       });
     } catch (error) {
       // ignore
+    }
+  };
+
+  const handleDownloadQR = async () => {
+    if (!booking?.qrCodeImage) {
+      return Alert.alert('Download unavailable', 'QR code image is not available yet.');
+    }
+    try {
+      const { status } = await MediaLibrary.requestPermissionsAsync();
+      if (status !== 'granted') {
+        return Alert.alert('Permission required', 'Please allow photo library access to save the QR image.');
+      }
+
+      const filename = `parkeasy_qr_${booking.id || Date.now()}.png`;
+      const fileUri = FileSystem.cacheDirectory + filename;
+
+      const downloadResult = await FileSystem.downloadAsync(booking.qrCodeImage, fileUri);
+      if (downloadResult.status !== 200 && downloadResult.status !== 201) {
+        throw new Error('Download failed');
+      }
+
+      const asset = await MediaLibrary.createAssetAsync(downloadResult.uri);
+      try {
+        await MediaLibrary.createAlbumAsync('ParkEasy', asset, false);
+      } catch (e) {
+        // album may already exist — ignore
+      }
+
+      Alert.alert('Saved', 'QR code saved to your photos/gallery.');
+    } catch (error) {
+      // Fallback: try share so user can save manually
+      try {
+        await Share.share({
+          title: 'ParkEasy QR Code',
+          message: 'Download or save your parking QR code from here.',
+          url: booking.qrCodeImage,
+        });
+      } catch (err) {
+        Alert.alert('Download failed', 'Unable to save or share QR code.');
+      }
     }
   };
 
@@ -181,6 +243,10 @@ export default function TicketScreen() {
           <TouchableOpacity style={styles.shareBtn} onPress={handleShare} activeOpacity={0.8}>
             <Ionicons name="share-social-outline" size={18} color={COLORS.oliveDark} />
             <Text style={styles.shareBtnText}>Share Ticket</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.shareBtn, { borderColor: COLORS.olive, backgroundColor: '#F0FFF0' }]} onPress={handleDownloadQR} activeOpacity={0.8}>
+            <Ionicons name="download-outline" size={18} color={COLORS.oliveDark} />
+            <Text style={[styles.shareBtnText, { color: COLORS.oliveDark }]}>Download QR</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.btnSolid}

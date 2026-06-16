@@ -56,12 +56,15 @@ const bookingSchema = new Schema(
 
     qrCode: {
       type: String, // store QR token string
-      required: true,
-      unique: true,
+      // created after payment is completed
     },
 
     qrCodeImage: {
-      type: String, // base64 data URL of the QR image
+      type: String, // Cloudinary secure URL of the QR image
+    },
+
+    qrScanUrl: {
+      type: String, // actual QR payload URL for scanning
     },
 
     entryTime: Date,
@@ -84,4 +87,27 @@ bookingSchema.methods.isActiveNow = function () {
   return now >= this.startTime && now <= this.endTime;
 };
 
-export default model("Booking", bookingSchema);
+const Booking = model("Booking", bookingSchema);
+
+// Ensure a sparse unique index on qrCode so multiple bookings without a qrCode
+// (created before payment) do not conflict. If an older non-sparse unique index
+// exists (from previous schema), drop it and recreate a sparse unique index.
+(async () => {
+  try {
+    const idxs = await Booking.collection.indexes();
+    const hasNonSparse = idxs.some(i => i.key && i.key.qrCode === 1 && !i.sparse);
+    if (hasNonSparse) {
+      try {
+        await Booking.collection.dropIndex('qrCode_1');
+      } catch (e) {
+        // ignore drop errors
+      }
+    }
+    // Create sparse unique index (idempotent if already exists)
+    await Booking.collection.createIndex({ qrCode: 1 }, { unique: true, sparse: true });
+  } catch (err) {
+    console.error('Failed to ensure qrCode sparse unique index:', err);
+  }
+})();
+
+export default Booking;

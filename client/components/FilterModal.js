@@ -39,9 +39,7 @@ function Slider({ min, max, value, onChange, formatLabel }) {
         {...responder.panHandlers}
         style={[styles.sliderKnob, { left: knobLeft }]}
       >
-        <View style={styles.tooltip}>
-          <Text style={styles.tooltipText}>{formatLabel(value)}</Text>
-        </View>
+        
       </View>
     </View>
   );
@@ -115,13 +113,13 @@ export default function FilterModal({ visible, onClose, onApply }) {
           {/* ── Max Price ─────────────────────────────── */}
           <View style={styles.rowBetween}>
             <Text style={styles.sectionLabel}>Max Price</Text>
-            <Text style={styles.valueTag}>₹{maxPrice}/hr</Text>
+            <Text style={styles.valueTag}>{maxPrice}</Text>
           </View>
           <Slider
             min={20} max={500}
             value={maxPrice}
             onChange={setMaxPrice}
-            formatLabel={v => `₹${v}`}
+            formatLabel={(v) => `${v}`}
           />
 
           {/* ── Vehicle Type ──────────────────────────── */}

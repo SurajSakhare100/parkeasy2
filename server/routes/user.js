@@ -5,6 +5,7 @@ import {
   getSavedParkings,
   getSearchHistory,
   addSearchHistory,
+  deleteSearchHistory,
 } from "../controllers/userController.js";
 import { protect as authMiddleware } from "../middleware/auth.js";
 
@@ -23,5 +24,6 @@ router.post("/saved/:parkingId/toggle", toggleSavedParking);
 // Search history
 router.get("/search/history", getSearchHistory);
 router.post("/search/history", addSearchHistory);
+router.delete("/search/history/:historyId", deleteSearchHistory);
 
 export default router;

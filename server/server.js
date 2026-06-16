@@ -9,8 +9,6 @@ import paymentRoutes from "./routes/payment.js";
 import userRoutes from "./routes/user.js";
 import uploadRoutes from "./routes/upload.js";
 
-
-
 const app = express();
 
 // Middleware

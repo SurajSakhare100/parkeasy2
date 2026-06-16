@@ -3,11 +3,14 @@ import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, 
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import bookingService from '../../services/bookingService';
+import { COLORS } from '../../theme';
+import { useRouter } from 'expo-router';
 
 export default function BookingsScreen() {
     const [bookings, setBookings] = useState([]);
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState('all');
+    const navigation = useRouter();
 
     const fetchBookings = async () => {
         setLoading(true);
@@ -68,9 +71,12 @@ export default function BookingsScreen() {
 
     return (
         <SafeAreaView style={styles.container}>
-            <View style={styles.header}>
-                <Text style={styles.headerText}>Bookings</Text>
-            </View>
+                <View style={styles.header}>
+                    <Text style={styles.headerText}>Bookings</Text>
+                    <TouchableOpacity style={{ position: 'absolute', right: 18, top: 20 }} onPress={() => navigation.push('/scan')}>
+                        <Ionicons name="qr-code" size={22} color={COLORS.olive} />
+                    </TouchableOpacity>
+                </View>
 
             <View style={styles.filtersContainer}>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filtersScroll}>

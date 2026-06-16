@@ -1,5 +1,3 @@
-import crypto from "crypto";
-import QRCode from "qrcode";
 import Booking from "../models/Booking.js";
 import Parking from "../models/Parking.js";
 
@@ -33,17 +31,6 @@ export const createBooking = async (req, res) => {
     const durationHours = (end - start) / (1000 * 60 * 60);
     const totalAmount = Math.ceil(durationHours * parking.pricePerHour);
 
-    // Generate a unique QR code token
-    const qrToken = crypto.randomBytes(16).toString("hex");
-    const qrPayload = JSON.stringify({
-      token: qrToken,
-      parkingId,
-      userId,
-      startTime,
-      endTime,
-    });
-    const qrCodeDataUrl = await QRCode.toDataURL(qrPayload);
-
     // Create booking with "pending" payment status initially
     const booking = await Booking.create({
       userId,
@@ -53,8 +40,7 @@ export const createBooking = async (req, res) => {
       startTime: start,
       endTime: end,
       totalAmount,
-      qrCode: qrToken,
-      qrCodeImage: qrCodeDataUrl,
+      // QR code will be generated after successful payment
       status: "pending_payment",
     });
 
@@ -182,6 +168,46 @@ export const getOwnerBookings = async (req, res) => {
     res.status(200).json(bookings);
   } catch (error) {
     console.error("Owner bookings error:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+/**
+ * GET /api/booking/scan/:qrToken
+ * Owner scans a booking QR token and gets booking details
+ */
+export const scanBookingByToken = async (req, res) => {
+  try {
+    const { qrToken } = req.params;
+    const booking = await Booking.findOne({ qrCode: qrToken })
+      .populate("parkingId", "name address ownerId")
+      .populate("userId", "name email");
+
+    if (!booking) {
+      return res.status(404).json({ message: "Booking not found" });
+    }
+
+    if (!booking.parkingId?.ownerId || booking.parkingId.ownerId.toString() !== req.user.userId.toString()) {
+      return res.status(403).json({ message: "Not authorized to access this booking" });
+    }
+
+    if (booking.status === "pending_payment") {
+      return res.status(400).json({ message: "Booking payment is not completed yet" });
+    }
+
+    if (booking.status === "cancelled") {
+      return res.status(400).json({ message: "This booking has been cancelled" });
+    }
+
+    if (booking.status === "booked" && !booking.entryTime) {
+      booking.status = "active";
+      booking.entryTime = new Date();
+      await booking.save();
+    }
+
+    res.status(200).json(booking);
+  } catch (error) {
+    console.error("Scan booking error:", error);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };

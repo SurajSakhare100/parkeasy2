@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, FlatList, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useIsFocused, useLocalSearchParams } from 'expo-router';
+import * as Location from 'expo-location';
 import { COLORS, SIZES, SHADOWS } from '../../theme';
 import parkingService from '../../services/parkingService';
 import userService from '../../services/userService';
@@ -18,6 +19,7 @@ export default function SearchScreen() {
   const [history, setHistory] = useState([]);
   const [savedParkingIds, setSavedParkingIds] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [userLocation, setUserLocation] = useState(null);
   const [filterVisible, setFilterVisible] = useState(false);
   // Pre-populate filters if navigated from home filter modal
   const [activeFilters, setActiveFilters] = useState(
@@ -35,6 +37,19 @@ export default function SearchScreen() {
       fetchSavedParkingIds();
     }
   }, [isFocused]);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== 'granted') return;
+        const loc = await Location.getLastKnownPositionAsync() || await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Highest });
+        if (loc && loc.coords) setUserLocation({ latitude: loc.coords.latitude, longitude: loc.coords.longitude });
+      } catch (e) {
+        // ignore location errors
+      }
+    })();
+  }, []);
 
   const fetchSavedParkingIds = async () => {
     try {
@@ -72,18 +87,6 @@ export default function SearchScreen() {
     }
   };
 
-  const computeParkingScore = (parking) => {
-    const price = parking.pricePerHour ?? 0;
-    const available = parking.availableSlots ?? 0;
-    const rating = parking.rating ?? 4;
-
-    const priceScore = Math.max(0, Math.min(1, 1 - price / 500));
-    const availabilityScore = Math.max(0, Math.min(1, available / 10));
-    const ratingScore = Math.max(0, Math.min(1, rating / 5));
-
-    return priceScore * 0.35 + availabilityScore * 0.45 + ratingScore * 0.2;
-  };
-
   const getRecommendationReasons = (parking) => {
     const reasons = [];
     if ((parking.availableSlots ?? 0) >= 5) reasons.push('High availability');
@@ -91,16 +94,6 @@ export default function SearchScreen() {
     if ((parking.rating ?? 0) >= 4.5) reasons.push('Top rated');
     if (reasons.length === 0) reasons.push('Best overall match');
     return reasons.slice(0, 3);
-  };
-
-  const pickBestParking = (parkingList) => {
-    if (!parkingList?.length) return null;
-    return parkingList
-      .map((parking) => ({
-        ...parking,
-        _recommendationScore: computeParkingScore(parking),
-      }))
-      .sort((a, b) => b._recommendationScore - a._recommendationScore)[0];
   };
 
   const renderRecommendation = () => {
@@ -115,13 +108,14 @@ export default function SearchScreen() {
       >
         <View style={styles.recommendationLabelRow}>
           <Text style={styles.recommendationBadge}>Recommended</Text>
-          <Text style={styles.recommendationScore}>{Math.round((recommendedParking._recommendationScore ?? 0) * 100)}%</Text>
+          <Text style={styles.recommendationScore}>{Math.round((recommendedParking.recommendationScore ?? 0) * 100)}%</Text>
         </View>
         <Text style={styles.recommendationTitle}>{recommendedParking.name}</Text>
         <Text style={styles.recommendationSubtitle}>{recommendedParking.address || recommendedParking.locationText || 'Best match for you'}</Text>
         <View style={styles.recommendationMetaRow}>
           <Text style={styles.recommendationMeta}>{recommendedParking.availableSlots ?? 0} slots</Text>
           <Text style={styles.recommendationMeta}>₹{recommendedParking.pricePerHour ?? '—'}/hr</Text>
+          <Text style={styles.recommendationMeta}>{recommendedParking.distanceText ?? ''}</Text>
           {recommendedParking.rating != null && (
             <Text style={styles.recommendationMeta}>{recommendedParking.rating.toFixed(1)}★</Text>
           )}
@@ -160,6 +154,7 @@ export default function SearchScreen() {
     const delayDebounceFn = setTimeout(() => {
       // If user typed a query, search for it with active filters.
       if (searchQuery.trim() !== '') {
+        // attach current location if available in filters
         executeSearch(searchQuery, activeFilters);
         return;
       }
@@ -180,10 +175,20 @@ export default function SearchScreen() {
   const executeSearch = async (query, filters = {}) => {
     try {
       setLoading(true);
-      const data = await parkingService.searchParkings(query, filters);
-      setResults(data);
-      setRecommendedParking(pickBestParking(data));
-      if (data.length > 0) {
+      const lat = filters?.lat ?? filters?.latitude ?? userLocation?.latitude ?? null;
+      const lng = filters?.lng ?? filters?.longitude ?? userLocation?.longitude ?? null;
+
+      const [searchData, recommendationData] = await Promise.all([
+        parkingService.searchParkings(query, { ...filters, lat, lng }),
+        parkingService.recommendParkings(query, { ...filters, lat, lng }),
+      ]);
+
+      setResults(searchData);
+      setRecommendedParking(
+        recommendationData?.recommendedParking ?? searchData?.[0] ?? null
+      );
+
+      if (searchData.length > 0) {
         saveSearch(query);
       }
     } catch (error) {
@@ -222,6 +227,7 @@ export default function SearchScreen() {
           />
         </TouchableOpacity>
         <Text style={styles.resultDistance}>₹{item.pricePerHour || '—'}/hr</Text>
+        <Text style={styles.resultDistance}>{item.distanceText ?? ''}</Text>
       </View>
     </TouchableOpacity>
   );

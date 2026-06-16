@@ -5,7 +5,8 @@ const parkingService = {
    * Get all active parking spots
    */
   getAllParkings: async () => {
-    const response = await api.get('/parking');
+    // Accept optional params object: { lat, lng }
+    const response = await api.get('/parking', { params: arguments[0] || {} });
     return response.data;
   },
 
@@ -29,7 +30,16 @@ const parkingService = {
     });
     return response.data;
   },
-  
+
+  /**
+   * Get recommended parkings from server recommendation engine
+   */
+  recommendParkings: async (query, filters = {}) => {
+    const response = await api.get('/parking/recommend', {
+      params: { q: query, ...filters }
+    });
+    return response.data;
+  },
 
   /**
    * Get all parkings belonging to logged in owner

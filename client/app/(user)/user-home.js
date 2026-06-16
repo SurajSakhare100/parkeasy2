@@ -194,7 +194,8 @@ export default function UserHomeScreen() {
 
   const fetchParkings = async () => {
     try {
-      const data = await parkingService.getAllParkings();
+      const coordsParam = userLocation ? { lat: userLocation.latitude, lng: userLocation.longitude } : {};
+      const data = await parkingService.searchParkings('', coordsParam);
       setAllParkings(data);                        // store master
       setParkings(data);                           // show all by default
       if (data.length > 0) setSelectedParking(data[0]);
@@ -210,6 +211,42 @@ export default function UserHomeScreen() {
       latitude: parking.location.coordinates[1],
       longitude: parking.location.coordinates[0],
     }));
+  };
+
+  // Jump to next parking card and zoom map
+  const handleNextCard = () => {
+    if (!parkings || parkings.length === 0) return;
+    const idx = parkings.findIndex(p => selectedParking && p._id === selectedParking._id);
+    const nextIdx = idx < 0 ? 0 : (idx + 1) % parkings.length;
+    const next = parkings[nextIdx];
+    if (!next) return;
+    setSelectedParking(next);
+    const nextRegion = {
+      latitude: next.location.coordinates[1],
+      longitude: next.location.coordinates[0],
+      latitudeDelta: 0.01,
+      longitudeDelta: 0.01,
+    };
+    setRegion(nextRegion);
+    mapRef.current?.animateToRegion(nextRegion, 600);
+  };
+
+  // Jump to previous parking card and zoom map
+  const handlePrevCard = () => {
+    if (!parkings || parkings.length === 0) return;
+    const idx = parkings.findIndex(p => selectedParking && p._id === selectedParking._id);
+    const prevIdx = idx < 0 ? 0 : (idx - 1 + parkings.length) % parkings.length;
+    const prev = parkings[prevIdx];
+    if (!prev) return;
+    setSelectedParking(prev);
+    const prevRegion = {
+      latitude: prev.location.coordinates[1],
+      longitude: prev.location.coordinates[0],
+      latitudeDelta: 0.01,
+      longitudeDelta: 0.01,
+    };
+    setRegion(prevRegion);
+    mapRef.current?.animateToRegion(prevRegion, 600);
   };
 
   // Button to snap map back to user's position
@@ -357,6 +394,9 @@ export default function UserHomeScreen() {
                     ₹{selectedParking.pricePerHour}<Text style={styles.priceUnit}>/hr</Text>
                   </Text>
                   <Text style={styles.availabilityText}>{selectedParking.availableSlots} spots left</Text>
+                  {selectedParking.distanceText && (
+                    <Text style={[styles.availabilityText, { marginTop: 4 }]}>{selectedParking.distanceText}</Text>
+                  )}
                 </View>
                 <View style={styles.actions}>
                   <TouchableOpacity
@@ -382,6 +422,16 @@ export default function UserHomeScreen() {
                   </TouchableOpacity>
                 </View>
               </View>
+            </TouchableOpacity>
+
+            {/* Previous card button */}
+            <TouchableOpacity style={styles.prevCardBtn} onPress={handlePrevCard}>
+              <Ionicons name="chevron-back" size={24} color={COLORS.surface} />
+            </TouchableOpacity>
+
+            {/* Next card button */}
+            <TouchableOpacity style={styles.nextCardBtn} onPress={handleNextCard}>
+              <Ionicons name="chevron-forward" size={24} color={COLORS.surface} />
             </TouchableOpacity>
           </View>
         )}
@@ -499,6 +549,32 @@ const styles = StyleSheet.create({
     height: 44,
     borderRadius: 22,
     backgroundColor: COLORS.surface,
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...SHADOWS.medium,
+  },
+  nextCardBtn: {
+    position: 'absolute',
+    right: 6,
+    top: '50%',
+    transform: [{ translateY: -22 }],
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: COLORS.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...SHADOWS.medium,
+  },
+  prevCardBtn: {
+    position: 'absolute',
+    left: 6,
+    top: '50%',
+    transform: [{ translateY: -22 }],
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: COLORS.primary,
     justifyContent: 'center',
     alignItems: 'center',
     ...SHADOWS.medium,

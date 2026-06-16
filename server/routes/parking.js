@@ -3,6 +3,7 @@ import {
   getAllParkings, 
   getNearParkings,
   searchParkings,
+  recommendParkings,
   getOwnerParkings,
   updateParking,
   deleteParking,
@@ -20,6 +21,7 @@ router.get("/near", getNearParkings);
 
 // Search parking spots
 router.get("/search", searchParkings);
+router.get("/recommend", recommendParkings);
 
 // Owner routes
 router.get("/owner", protect, getOwnerParkings);

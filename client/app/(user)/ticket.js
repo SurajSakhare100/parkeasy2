@@ -1,17 +1,21 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity,
   Platform, ScrollView, Image, Share, Animated, Alert
 } from 'react-native';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import * as MediaLibrary from 'expo-media-library';
+import Constants from 'expo-constants';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { COLORS, SIZES, SHADOWS } from '../../theme';
+import bookingService from '../../services/bookingService';
 
 function formatDateTime(isoString) {
+  if (!isoString) return { time: '—', date: '—' };
   const d = new Date(isoString);
+  if (isNaN(d.getTime())) return { time: '—', date: '—' };
   return {
     time: d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }),
     date: d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }),
@@ -21,16 +25,69 @@ function formatDateTime(isoString) {
 export default function TicketScreen() {
   const navigation = useRouter();
   const params = useLocalSearchParams();
-  let booking = params.booking;
-  if (typeof booking === 'string') {
-    try {
-      booking = JSON.parse(booking);
-    } catch (error) {
-      console.warn('Unable to parse booking param:', error);
-    }
-  }
+  const [booking, setBooking] = useState(null);
 
   const scaleAnim = useRef(new Animated.Value(0)).current;
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  // Initialize booking details from parameters
+  useEffect(() => {
+    let initialBooking = params.booking;
+    if (typeof initialBooking === 'string') {
+      try {
+        const parsed = JSON.parse(initialBooking);
+        setBooking(parsed);
+      } catch (error) {
+        console.warn('Unable to parse booking param:', error);
+      }
+    }
+  }, [params.booking]);
+
+  // Fetch the latest booking status from backend to handle real-time check-in updates
+  useEffect(() => {
+    const bookingId = booking?.id || booking?._id;
+    if (!bookingId) return;
+
+    let active = true;
+    const fetchLatest = async () => {
+      try {
+        const latest = await bookingService.getBookingById(bookingId);
+        if (active) {
+          setBooking(latest);
+        }
+      } catch (err) {
+        console.warn('Failed to fetch latest booking:', err);
+      }
+    };
+    
+    fetchLatest();
+    
+    // Poll every 8 seconds to reflect gate entry/exit changes automatically
+    const interval = setInterval(fetchLatest, 8000);
+
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
+  }, [booking?.id, booking?._id]);
+
+  useEffect(() => {
+    if (booking) {
+      Animated.sequence([
+        Animated.spring(scaleAnim, {
+          toValue: 1,
+          friction: 4,
+          tension: 100,
+          useNativeDriver: true,
+        }),
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 400,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+  }, [!!booking]);
 
   if (!booking) {
     return (
@@ -44,32 +101,18 @@ export default function TicketScreen() {
     );
   }
 
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    // Success animation sequence
-    Animated.sequence([
-      Animated.spring(scaleAnim, {
-        toValue: 1,
-        friction: 4,
-        tension: 100,
-        useNativeDriver: true,
-      }),
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 400,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, []);
-
+  const bookingIdStr = booking.id || booking._id;
+  const parkingName = booking.parkingName || booking.parkingId?.name || 'N/A';
+  const address = booking.address || booking.parkingId?.address || '—';
+  const spotName = booking.spotName || '—';
+  
   const start = formatDateTime(booking.startTime);
   const end = formatDateTime(booking.endTime);
 
   const handleShare = async () => {
     try {
       await Share.share({
-        message: `🅿️ ParkEasy Ticket\n\n📍 ${booking.parkingName}\n📍 ${booking.address}\n⏰ ${start.date} · ${start.time} → ${end.time}\n💰 ₹${booking.totalAmount}\n\nBooking ID: ${booking.id}`,
+        message: `🅿️ ParkEasy Ticket\n\n📍 ${parkingName}\n📍 ${address}\n⏰ ${start.date} · ${start.time} → ${end.time}\n💰 ₹${booking.totalAmount}\n\nBooking ID: ${bookingIdStr}`,
       });
     } catch (error) {
       // ignore
@@ -80,18 +123,26 @@ export default function TicketScreen() {
     if (!booking?.qrCodeImage) {
       return Alert.alert('Download unavailable', 'QR code image is not available yet.');
     }
+
+    const filename = `parkeasy_qr_${bookingIdStr || Date.now()}.jpg`;
+    const fileUri = `${FileSystem.cacheDirectory}${filename}`;
+
     try {
-      const { status } = await MediaLibrary.requestPermissionsAsync();
-      if (status !== 'granted') {
-        return Alert.alert('Permission required', 'Please allow photo library access to save the QR image.');
-      }
-
-      const filename = `parkeasy_qr_${booking.id || Date.now()}.png`;
-      const fileUri = FileSystem.cacheDirectory + filename;
-
       const downloadResult = await FileSystem.downloadAsync(booking.qrCodeImage, fileUri);
       if (downloadResult.status !== 200 && downloadResult.status !== 201) {
         throw new Error('Download failed');
+      }
+
+      if (Constants.appOwnership === 'expo') {
+        return Alert.alert(
+          'Saved locally',
+          `QR code downloaded as JPG to the app cache. To save it to your device gallery, use a development build or standalone app.\n\nPath: ${downloadResult.uri}`
+        );
+      }
+
+      const { status } = await MediaLibrary.requestPermissionsAsync();
+      if (status !== 'granted') {
+        return Alert.alert('Permission required', 'Please allow photo library access to save the QR image.');
       }
 
       const asset = await MediaLibrary.createAssetAsync(downloadResult.uri);
@@ -101,18 +152,29 @@ export default function TicketScreen() {
         // album may already exist — ignore
       }
 
-      Alert.alert('Saved', 'QR code saved to your photos/gallery.');
+      Alert.alert('Saved', 'QR code saved as JPG to your gallery.');
     } catch (error) {
-      // Fallback: try share so user can save manually
-      try {
-        await Share.share({
-          title: 'ParkEasy QR Code',
-          message: 'Download or save your parking QR code from here.',
-          url: booking.qrCodeImage,
-        });
-      } catch (err) {
-        Alert.alert('Download failed', 'Unable to save or share QR code.');
-      }
+      console.error('QR download error:', error);
+      Alert.alert(
+        'Download failed',
+        'Unable to save the QR code. In Expo Go, full media-library access requires a development build.'
+      );
+    }
+  };
+
+  const getStatusBadgeStyle = (status) => {
+    switch (status) {
+      case 'active':
+        return { bg: '#FFF9C4', text: '#6D5E08', label: 'ACTIVE' }; // Currently checked-in
+      case 'completed':
+        return { bg: '#E3F2FD', text: '#0D47A1', label: 'COMPLETED' }; // Completed stay
+      case 'cancelled':
+        return { bg: '#FFEBEE', text: '#C62828', label: 'CANCELLED' };
+      case 'pending_payment':
+        return { bg: '#FFF3E0', text: '#E65100', label: 'PENDING PAYMENT' };
+      case 'booked':
+      default:
+        return { bg: COLORS.primary, text: COLORS.oliveDark, label: 'BOOKED' }; // Awaiting entry
     }
   };
 
@@ -145,15 +207,18 @@ export default function TicketScreen() {
           <View style={styles.ticketHeader}>
             <View style={styles.ticketHeaderLeft}>
               <Text style={styles.ticketBrand}>🅿️ ParkEasy</Text>
-              <Text style={styles.ticketBookingId}>#{booking.id?.slice(-8).toUpperCase()}</Text>
+              <Text style={styles.ticketBookingId}>#{bookingIdStr?.slice(-8).toUpperCase()}</Text>
             </View>
-            <View style={[styles.ticketStatusBadge,
-            booking.status === 'booked' && styles.ticketStatusBooked,
-            ]}>
-              <Text style={styles.ticketStatusText}>
-                {booking.status?.toUpperCase()}
-              </Text>
-            </View>
+            {(() => {
+              const badge = getStatusBadgeStyle(booking.status);
+              return (
+                <View style={[styles.ticketStatusBadge, { backgroundColor: badge.bg }]}>
+                  <Text style={[styles.ticketStatusText, { color: badge.text }]}>
+                    {badge.label}
+                  </Text>
+                </View>
+              );
+            })()}
           </View>
 
           {/* Tear Line */}
@@ -169,8 +234,8 @@ export default function TicketScreen() {
               <Ionicons name="location" size={16} color={COLORS.olive} />
               <View style={{ flex: 1, marginLeft: 10 }}>
                 <Text style={styles.ticketLabel}>Location</Text>
-                <Text style={styles.ticketValue}>{booking.parkingName}</Text>
-                <Text style={styles.ticketSub}>{booking.address}</Text>
+                <Text style={styles.ticketValue}>{parkingName}</Text>
+                <Text style={styles.ticketSub}>{address}</Text>
               </View>
             </View>
           </View>
@@ -203,7 +268,7 @@ export default function TicketScreen() {
             <View style={styles.detailDivider} />
             <View style={styles.detailItem}>
               <Text style={styles.detailLabel}>Spot No.</Text>
-              <Text style={[styles.detailValue, { color: COLORS.olive }]}>{booking.spotName || '—'}</Text>
+              <Text style={[styles.detailValue, { color: COLORS.olive }]}>{spotName}</Text>
             </View>
             <View style={styles.detailDivider} />
             <View style={styles.detailItem}>
@@ -211,6 +276,50 @@ export default function TicketScreen() {
               <Text style={[styles.detailValue]}>₹{booking.totalAmount}</Text>
             </View>
           </View>
+
+          {/* Entry & Exit Logs */}
+          {(booking.entryTime || booking.exitTime) && (
+            <>
+              <View style={styles.tearLine}>
+                <View style={styles.tearCircleLeft} />
+                <View style={styles.tearDashes} />
+                <View style={styles.tearCircleRight} />
+              </View>
+              <View style={styles.ticketSection}>
+                <Text style={[styles.qrTitle, { marginBottom: 12, fontSize: 13 }]}>Gate Logs</Text>
+                
+                {booking.entryTime && (
+                  <View style={[styles.ticketRow, { marginBottom: booking.exitTime ? 12 : 0 }]}>
+                    <Ionicons name="log-in" size={16} color="#2E7D32" style={{ marginTop: 2 }} />
+                    <View style={{ flex: 1, marginLeft: 10 }}>
+                      <Text style={styles.ticketLabel}>Checked In</Text>
+                      <Text style={styles.ticketValue}>
+                        {new Date(booking.entryTime).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}
+                      </Text>
+                      <Text style={styles.ticketSub}>
+                        {new Date(booking.entryTime).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                      </Text>
+                    </View>
+                  </View>
+                )}
+
+                {booking.exitTime && (
+                  <View style={styles.ticketRow}>
+                    <Ionicons name="log-out" size={16} color="#0D47A1" style={{ marginTop: 2 }} />
+                    <View style={{ flex: 1, marginLeft: 10 }}>
+                      <Text style={styles.ticketLabel}>Checked Out</Text>
+                      <Text style={styles.ticketValue}>
+                        {new Date(booking.exitTime).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}
+                      </Text>
+                      <Text style={styles.ticketSub}>
+                        {new Date(booking.exitTime).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                      </Text>
+                    </View>
+                  </View>
+                )}
+              </View>
+            </>
+          )}
 
           {/* Tear Line */}
           <View style={styles.tearLine}>
@@ -240,21 +349,15 @@ export default function TicketScreen() {
 
         {/* Action Buttons */}
         <Animated.View style={[styles.actions, { opacity: fadeAnim }]}>
-          <TouchableOpacity style={styles.shareBtn} onPress={handleShare} activeOpacity={0.8}>
+          <TouchableOpacity style={styles.actionBtn} onPress={handleShare} activeOpacity={0.8}>
             <Ionicons name="share-social-outline" size={18} color={COLORS.oliveDark} />
             <Text style={styles.shareBtnText}>Share Ticket</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.shareBtn, { borderColor: COLORS.olive, backgroundColor: '#F0FFF0' }]} onPress={handleDownloadQR} activeOpacity={0.8}>
+          <TouchableOpacity style={[styles.actionBtn, styles.downloadBtn]} onPress={handleDownloadQR} activeOpacity={0.8}>
             <Ionicons name="download-outline" size={18} color={COLORS.oliveDark} />
-            <Text style={[styles.shareBtnText, { color: COLORS.oliveDark }]}>Download QR</Text>
+            <Text style={[styles.shareBtnText, { color: COLORS.oliveDark }]}>Download JPG</Text>
           </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.btnSolid}
-            onPress={() => navigation.push('/user-home')}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.homeBtnText}>Back to Home</Text>
-          </TouchableOpacity>
+          
         </Animated.View>
 
         {/* View Bookings Link */}
@@ -529,10 +632,10 @@ const styles = StyleSheet.create({
   actions: {
     width: '100%',
     flexDirection: 'row',
-    gap: 12,
+    justifyContent: 'space-between',
     marginBottom: 16,
   },
-  shareBtn: {
+  actionBtn: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
@@ -542,7 +645,11 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: COLORS.primary,
     backgroundColor: '#FFF',
-    gap: 6,
+    marginHorizontal: 4,
+  },
+  downloadBtn: {
+    backgroundColor: '#F0FFF0',
+    borderColor: COLORS.olive,
   },
   shareBtnText: {
     fontSize: SIZES.font,
@@ -550,19 +657,10 @@ const styles = StyleSheet.create({
     color: COLORS.oliveDark,
   },
   homeBtn: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 14,
-    borderRadius: 12,
     backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
   },
-  homeBtnText: {
-    fontSize: SIZES.font,
-    fontWeight: '700',
-    color: COLORS.oliveDark,
-  },
-  viewAllBookings: {
+  viewAllText: {
     fontSize: SIZES.font,
     color: COLORS.olive,
     fontWeight: '600',

@@ -5,19 +5,14 @@ import cloudinary from "../config/cloudinary.js";
 import Payment from "../models/Payment.js";
 import Booking from "../models/Booking.js";
 
-// ✅ Lazy getter — called only when a route handler runs,
-//    so dotenv has already loaded the env vars by then.
+
 const getRazorpay = () =>
   new Razorpay({
     key_id: process.env.RAZORPAY_KEY_ID,
     key_secret: process.env.RAZORPAY_KEY_SECRET,
   });
 
-/**
- * POST /api/payment/create-order
- * Creates a Razorpay order for a given booking
- * Body: { bookingId }
- */
+
 export const createOrder = async (req, res) => {
   try {
     const { bookingId } = req.body;
@@ -26,8 +21,6 @@ export const createOrder = async (req, res) => {
     if (!booking) {
       return res.status(404).json({ message: "Booking not found" });
     }
-
-    // Calculate amount in paise (Razorpay works in smallest currency unit)
     const amountInPaise = Math.round(booking.totalAmount * 100);
 
     const order = await getRazorpay().orders.create({
@@ -40,7 +33,6 @@ export const createOrder = async (req, res) => {
       },
     });
 
-    // Create a pending Payment record
     const payment = await Payment.create({
       bookingId,
       razorpayOrderId: order.id,
@@ -70,16 +62,11 @@ export const createOrder = async (req, res) => {
   }
 };
 
-/**
- * POST /api/payment/verify
- * Verifies Razorpay signature and confirms payment
- * Body: { razorpay_order_id, razorpay_payment_id, razorpay_signature, bookingId }
- */
+
 export const verifyPayment = async (req, res) => {
   try {
     const { razorpay_order_id, razorpay_payment_id, razorpay_signature, bookingId } = req.body;
 
-    // Verify signature
     const body = razorpay_order_id + "|" + razorpay_payment_id;
     const expectedSignature = crypto
       .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
@@ -87,7 +74,6 @@ export const verifyPayment = async (req, res) => {
       .digest("hex");
 
     if (expectedSignature !== razorpay_signature) {
-      // Update payment as failed
       await Payment.findOneAndUpdate(
         { razorpayOrderId: razorpay_order_id },
         { status: "failed" }
@@ -95,7 +81,6 @@ export const verifyPayment = async (req, res) => {
       return res.status(400).json({ message: "Payment verification failed. Invalid signature." });
     }
 
-    // Update Payment record
     const payment = await Payment.findOneAndUpdate(
       { razorpayOrderId: razorpay_order_id },
       {
@@ -109,7 +94,6 @@ export const verifyPayment = async (req, res) => {
       return res.status(404).json({ message: "Payment record not found" });
     }
 
-    // Update Booking status to "booked" and link payment
     const booking = await Booking.findByIdAndUpdate(
       bookingId,
       {
@@ -119,7 +103,6 @@ export const verifyPayment = async (req, res) => {
       { new: true }
     ).populate("parkingId");
 
-    // Generate QR code only after successful payment
     try {
       const qrToken = crypto.randomBytes(16).toString("hex");
       const qrScanUrl = `${process.env.QR_SCAN_URL_BASE || process.env.SERVER_URL || "https://parkeasy.example.com"}/api/booking/scan/${qrToken}`;
@@ -149,6 +132,7 @@ export const verifyPayment = async (req, res) => {
         parkingName: booking.parkingId.name,
         address: booking.parkingId.address,
         vehicleType: booking.vehicleType,
+        spotName: booking.spotName,
         startTime: booking.startTime,
         endTime: booking.endTime,
         totalAmount: payment.amount,
@@ -163,10 +147,6 @@ export const verifyPayment = async (req, res) => {
   }
 };
 
-/**
- * GET /api/payment/booking/:bookingId
- * Fetch payment status for a booking
- */
 export const getPaymentByBooking = async (req, res) => {
   try {
     const payment = await Payment.findOne({ bookingId: req.params.bookingId });

@@ -1,11 +1,7 @@
 import Booking from "../models/Booking.js";
 import Parking from "../models/Parking.js";
 
-/**
- * POST /api/booking/create
- * Creates a pending booking (before payment)
- * Body: { parkingId, vehicleType, startTime, endTime }
- */
+
 export const createBooking = async (req, res) => {
   try {
     const { parkingId, vehicleType, startTime, endTime, spotName } = req.body;
@@ -27,11 +23,9 @@ export const createBooking = async (req, res) => {
       return res.status(400).json({ message: "End time must be after start time" });
     }
 
-    // Calculate duration in hours and total amount
     const durationHours = (end - start) / (1000 * 60 * 60);
     const totalAmount = Math.ceil(durationHours * parking.pricePerHour);
 
-    // Create booking with "pending" payment status initially
     const booking = await Booking.create({
       userId,
       parkingId,
@@ -40,7 +34,6 @@ export const createBooking = async (req, res) => {
       startTime: start,
       endTime: end,
       totalAmount,
-      // QR code will be generated after successful payment
       status: "pending_payment",
     });
 
@@ -56,10 +49,6 @@ export const createBooking = async (req, res) => {
   }
 };
 
-/**
- * GET /api/booking/my-bookings
- * Get all bookings for current user
- */
 export const getMyBookings = async (req, res) => {
   try {
     const userId = req.user.userId;
@@ -75,10 +64,7 @@ export const getMyBookings = async (req, res) => {
   }
 };
 
-/**
- * GET /api/booking/:bookingId
- * Get a single booking by ID (with QR code)
- */
+
 export const getBookingById = async (req, res) => {
   try {
     const booking = await Booking.findById(req.params.bookingId)
@@ -89,7 +75,6 @@ export const getBookingById = async (req, res) => {
       return res.status(404).json({ message: "Booking not found" });
     }
 
-    // Only allow owner to view
     if (booking.userId.toString() !== req.user.userId.toString()) {
       return res.status(403).json({ message: "Not authorized" });
     }
@@ -101,10 +86,7 @@ export const getBookingById = async (req, res) => {
   }
 };
 
-/**
- * DELETE /api/booking/:bookingId/cancel
- * Cancel a booking (only if not yet active)
- */
+
 export const cancelBooking = async (req, res) => {
   try {
     const booking = await Booking.findById(req.params.bookingId);
@@ -128,10 +110,7 @@ export const cancelBooking = async (req, res) => {
   }
 };
 
-/**
- * GET /api/booking/owner/bookings
- * Get owner bookings mapped to their parkings
- */
+
 export const getOwnerBookings = async (req, res) => {
   try {
     const ownerId = req.user.userId;
@@ -172,16 +151,14 @@ export const getOwnerBookings = async (req, res) => {
   }
 };
 
-/**
- * GET /api/booking/scan/:qrToken
- * Owner scans a booking QR token and gets booking details
- */
+
 export const scanBookingByToken = async (req, res) => {
   try {
     const { qrToken } = req.params;
     const booking = await Booking.findOne({ qrCode: qrToken })
-      .populate("parkingId", "name address ownerId")
-      .populate("userId", "name email");
+      .populate("parkingId", "name address ownerId pricePerHour images")
+      .populate("userId", "name email phone")
+      .populate("paymentId", "amount status razorpayPaymentId createdAt");
 
     if (!booking) {
       return res.status(404).json({ message: "Booking not found" });
@@ -203,6 +180,10 @@ export const scanBookingByToken = async (req, res) => {
       booking.status = "active";
       booking.entryTime = new Date();
       await booking.save();
+    } else if (booking.status === "active" && !booking.exitTime) {
+      booking.status = "completed";
+      booking.exitTime = new Date();
+      await booking.save();
     }
 
     res.status(200).json(booking);
@@ -212,9 +193,7 @@ export const scanBookingByToken = async (req, res) => {
   }
 };
 
-/**
- * GET /api/booking/owner/analytics
- */
+
 export const getOwnerAnalytics = async (req, res) => {
   try {
     const ownerId = req.user.userId;

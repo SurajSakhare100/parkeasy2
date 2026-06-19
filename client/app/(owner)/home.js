@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, RefreshControl } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, RefreshControl, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { DeviceEventEmitter } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -9,22 +9,38 @@ import bookingService from '../../services/bookingService';
 
 export default function HomeScreen() {
     const router = useRouter();
+    const insets = useSafeAreaInsets();
     const [user, setUser] = useState(null);
     const [analytics, setAnalytics] = useState(null);
+    const pulseAnim = useRef(new Animated.Value(1)).current;
+    const glowAnim = useRef(new Animated.Value(0.3)).current;
     const [refreshing, setRefreshing] = useState(false);
 
     const loadData = async () => {
         try {
             const userStr = await AsyncStorage.getItem('user');
             if (userStr) setUser(JSON.parse(userStr));
-            
+
             const stats = await bookingService.getOwnerAnalytics();
             setAnalytics(stats);
-        } catch(e) {}
+        } catch (e) { }
     }
 
     useEffect(() => {
         loadData();
+        // Pulse animation loop for FAB
+        Animated.loop(
+            Animated.sequence([
+                Animated.parallel([
+                    Animated.timing(pulseAnim, { toValue: 1.12, duration: 800, useNativeDriver: true }),
+                    Animated.timing(glowAnim, { toValue: 0.0, duration: 800, useNativeDriver: true }),
+                ]),
+                Animated.parallel([
+                    Animated.timing(pulseAnim, { toValue: 1, duration: 800, useNativeDriver: true }),
+                    Animated.timing(glowAnim, { toValue: 0.3, duration: 800, useNativeDriver: true }),
+                ]),
+            ])
+        ).start();
     }, []);
 
     const onRefresh = async () => {
@@ -51,7 +67,7 @@ export default function HomeScreen() {
                 </TouchableOpacity>
             </View>
 
-            <ScrollView 
+            <ScrollView
                 contentContainerStyle={styles.content}
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
             >
@@ -78,7 +94,7 @@ export default function HomeScreen() {
                 <View style={styles.actionSection}>
                     <Text style={styles.sectionTitle}>Quick Actions</Text>
                     <View style={styles.actionRow}>
-                        <TouchableOpacity 
+                        <TouchableOpacity
                             style={styles.quickActionBox}
                             activeOpacity={0.8}
                             onPress={() => router.push('/(owner)/my-parkings')}
@@ -87,7 +103,7 @@ export default function HomeScreen() {
                             <Text style={styles.actionText}>Manage Spots</Text>
                         </TouchableOpacity>
 
-                        <TouchableOpacity 
+                        <TouchableOpacity
                             style={[styles.quickActionBox, { backgroundColor: '#FBD427' }]}
                             activeOpacity={0.8}
                             onPress={() => router.push('/(owner)/add-parking')}
@@ -106,6 +122,25 @@ export default function HomeScreen() {
                     </View>
                 </View>
             </ScrollView>
+
+            {/* <Animated.View
+                style={[
+                    styles.fabRing,
+                    {
+                        bottom: insets.bottom + 90,
+                        transform: [{ scale: pulseAnim }],
+                        opacity: glowAnim,
+                    }
+                ]}
+                pointerEvents="none"
+            /> */}
+            <TouchableOpacity
+                style={[styles.fab, { bottom: insets.bottom + 90 }]}
+                onPress={() => router.push('/(owner)/scan')}
+                activeOpacity={0.85}
+            >
+                <Ionicons name="qr-code" size={28} color="#4C4223" />
+            </TouchableOpacity>
         </SafeAreaView>
     );
 }
@@ -146,5 +181,31 @@ const styles = StyleSheet.create({
         padding: 20, alignItems: 'center', marginTop: 10, marginBottom: 20
     },
     promoText: { color: '#FFF', fontSize: 16, fontWeight: 'bold', marginBottom: 4 },
-    promoSubText: { color: '#CCC', fontSize: 13 }
+    promoSubText: { color: '#CCC', fontSize: 13 },
+    // Floating Action Button
+    fab: {
+        position: 'absolute',
+        right: 24,
+        width: 60,
+        height: 60,
+        borderRadius: 30,
+        backgroundColor: '#FBD427',
+        justifyContent: 'center',
+        alignItems: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.25,
+        shadowRadius: 12,
+        elevation: 10,
+        borderWidth: 3,
+        borderColor: '#FFF',
+    },
+    fabRing: {
+        position: 'absolute',
+        right: 12,
+        width: 84,
+        height: 84,
+        borderRadius: 42,
+        backgroundColor: '#FBD427',
+    },
 });

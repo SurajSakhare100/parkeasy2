@@ -1,24 +1,58 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { COLORS, SIZES, SHADOWS } from '../theme';
+import { COLORS, SHADOWS } from '../theme';
 
 const OwnerBottomNavbar = ({ state, descriptors, navigation }) => {
   const insets = useSafeAreaInsets();
   const focusedOptions = descriptors[state.routes[state.index].key].options;
 
-  // If the currently focused screen should hide the tab bar (e.g. details)
-  if (focusedOptions.tabBarStyle?.display === 'none' || focusedOptions.href === null) {
+  if (
+    focusedOptions.tabBarStyle?.display === 'none' ||
+    focusedOptions.href === null
+  ) {
     return null;
   }
 
+  const getIcon = (name, isFocused) => {
+    switch (name) {
+      case 'home':
+        return isFocused ? 'home' : 'home-outline';
+
+      case 'my-parkings':
+        return isFocused ? 'car' : 'car-outline';
+
+      case 'bookings':
+        return isFocused ? 'list' : 'list-outline';
+
+      case 'analytics':
+        return isFocused
+          ? 'stats-chart'
+          : 'stats-chart-outline';
+
+      case 'profile':
+        return isFocused ? 'person' : 'person-outline';
+
+      default:
+        return 'square-outline';
+    }
+  };
+
   return (
-    <View style={styles.container}>
-      <View style={[styles.navBar, { paddingBottom: Math.max(insets.bottom, 12), height: 60 + Math.max(insets.bottom, 12) }]}>
+    <View
+      style={[
+        styles.container,
+        { paddingBottom: Math.max(insets.bottom, 12) },
+      ]}
+    >
+      <View style={styles.navBar}>
         {state.routes.map((route, index) => {
+          // Hide Scan tab completely
+          if (route.name === 'scan') return null;
+
           const { options } = descriptors[route.key];
-          
+
           if (options.href === null || options.tabBarButton) {
             return null;
           }
@@ -27,8 +61,8 @@ const OwnerBottomNavbar = ({ state, descriptors, navigation }) => {
             options.tabBarLabel !== undefined
               ? options.tabBarLabel
               : options.title !== undefined
-              ? options.title
-              : route.name;
+                ? options.title
+                : route.name;
 
           const isFocused = state.index === index;
 
@@ -51,44 +85,53 @@ const OwnerBottomNavbar = ({ state, descriptors, navigation }) => {
             });
           };
 
-          const getIcon = (name, isFocused) => {
-            switch (name) {
-              case 'home':
-                return isFocused ? 'home' : 'home-outline';
-              case 'my-parkings':
-                return isFocused ? 'car' : 'car-outline';
-              case 'bookings':
-                return isFocused ? 'list' : 'list-outline';
-              case 'analytics':
-                return isFocused ? 'stats-chart' : 'stats-chart-outline';
-              case 'profile':
-                return isFocused ? 'person' : 'person-outline';
-              default:
-                return 'square-outline';
-            }
-          };
-
           return (
             <TouchableOpacity
               key={route.key}
               accessibilityRole="button"
-              accessibilityState={isFocused ? { selected: true } : {}}
+              accessibilityState={
+                isFocused ? { selected: true } : {}
+              }
+              accessibilityLabel={label}
               onPress={onPress}
               onLongPress={onLongPress}
               style={styles.navItem}
               activeOpacity={0.7}
             >
-              <View style={[styles.iconContainer, isFocused && styles.activeIconContainer]}>
-                <Ionicons 
-                  name={getIcon(route.name, isFocused)} 
-                  size={22} 
-                  color={isFocused ? COLORS.oliveDark : COLORS.textLight} 
+              <View
+                style={[
+                  styles.iconContainer,
+                  isFocused && styles.activeIconContainer,
+                ]}
+              >
+                <Ionicons
+                  name={getIcon(route.name, isFocused)}
+                  size={22}
+                  color={
+                    isFocused
+                      ? COLORS.oliveDark
+                      : COLORS.textLight
+                  }
                 />
               </View>
-              <Text style={[styles.label, { color: isFocused ? COLORS.oliveDark : COLORS.textLight, fontWeight: isFocused ? '700' : '500' }]}>
+
+              <Text
+                style={[
+                  styles.label,
+                  {
+                    color: isFocused
+                      ? COLORS.oliveDark
+                      : COLORS.textLight,
+                    fontWeight: isFocused ? '700' : '500',
+                  },
+                ]}
+              >
                 {label}
               </Text>
-              {isFocused && <View style={styles.activeIndicator} />}
+
+              {isFocused && (
+                <View style={styles.activeIndicator} />
+              )}
             </TouchableOpacity>
           );
         })}
@@ -105,6 +148,7 @@ const styles = StyleSheet.create({
     right: 0,
     backgroundColor: 'transparent',
   },
+
   navBar: {
     flexDirection: 'row',
     backgroundColor: '#FFFFFF',
@@ -112,17 +156,20 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 25,
     borderTopWidth: 1,
     borderTopColor: '#F0F0F0',
-    ...SHADOWS.medium,
     justifyContent: 'space-around',
     alignItems: 'center',
     paddingHorizontal: 10,
+    height: 64,
+    ...SHADOWS.medium,
   },
+
   navItem: {
     flex: 1,
+    height: '100%',
     alignItems: 'center',
     justifyContent: 'center',
-    height: '100%',
   },
+
   iconContainer: {
     width: 42,
     height: 32,
@@ -131,12 +178,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 2,
   },
+
   activeIconContainer: {
     backgroundColor: COLORS.primary + '30',
   },
+
   label: {
     fontSize: 10,
   },
+
   activeIndicator: {
     position: 'absolute',
     bottom: 5,
@@ -144,7 +194,7 @@ const styles = StyleSheet.create({
     height: 4,
     borderRadius: 2,
     backgroundColor: COLORS.oliveDark,
-  }
+  },
 });
 
 export default OwnerBottomNavbar;

@@ -55,12 +55,6 @@ export default function LoginScreen() {
       await AsyncStorage.setItem('userToken', token);
       await AsyncStorage.setItem('user', JSON.stringify(user));
       DeviceEventEmitter.emit('auth_success', { token, user });
-
-      if (role === 'owner') {
-        router.replace('/(owner)/home');
-      } else {
-        router.replace('/(user)/user-home');
-      }
     } catch (error) {
       Alert.alert('Error', error.response?.data?.message || 'Login failed. Please check your credentials.');
     } finally {

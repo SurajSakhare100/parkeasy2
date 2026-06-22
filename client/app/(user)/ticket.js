@@ -11,6 +11,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { COLORS, SIZES, SHADOWS } from '../../theme';
 import bookingService from '../../services/bookingService';
+import { useTheme } from '../../context/ThemeContext';
 
 function formatDateTime(isoString) {
   if (!isoString) return { time: '—', date: '—' };
@@ -24,6 +25,7 @@ function formatDateTime(isoString) {
 
 export default function TicketScreen() {
   const navigation = useRouter();
+  const { theme, isDarkMode } = useTheme();
   const params = useLocalSearchParams();
   const [booking, setBooking] = useState(null);
 
@@ -91,9 +93,9 @@ export default function TicketScreen() {
 
   if (!booking) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
         <View style={[styles.center, { padding: 24 }]}> 
-          <Text style={{ fontSize: 16, color: COLORS.textLight, textAlign: 'center' }}>
+          <Text style={{ fontSize: 16, color: theme.textLight, textAlign: 'center' }}>
             Booking details are missing. Please open your ticket from My Bookings again.
           </Text>
         </View>
@@ -112,7 +114,7 @@ export default function TicketScreen() {
   const handleShare = async () => {
     try {
       await Share.share({
-        message: `🅿️ ParkEasy Ticket\n\n📍 ${parkingName}\n📍 ${address}\n⏰ ${start.date} · ${start.time} → ${end.time}\n💰 ₹${booking.totalAmount}\n\nBooking ID: ${bookingIdStr}`,
+        message: `🅿️ ParkEasy Ticket\n\n📍 ${parkingName}\n📍 ${address}\n🚗 ${booking.vehicleNumber || 'Vehicle'}\n⏰ ${start.date} · ${start.time} → ${end.time}\n💰 ₹${booking.totalAmount}\n\nBooking ID: ${bookingIdStr}`,
       });
     } catch (error) {
       // ignore
@@ -163,29 +165,44 @@ export default function TicketScreen() {
   };
 
   const getStatusBadgeStyle = (status) => {
+    if (isDarkMode) {
+      switch (status) {
+        case 'active':
+          return { bg: '#8A6B00', text: '#FFFDE7', label: 'ACTIVE' };
+        case 'completed':
+          return { bg: '#0D47A1', text: '#E3F2FD', label: 'COMPLETED' };
+        case 'cancelled':
+          return { bg: '#B71C1C', text: '#FFEBEE', label: 'CANCELLED' };
+        case 'pending_payment':
+          return { bg: '#A75D00', text: '#FFE0B2', label: 'PENDING PAYMENT' };
+        case 'booked':
+        default:
+          return { bg: COLORS.primary, text: COLORS.oliveDark, label: 'BOOKED' };
+      }
+    }
     switch (status) {
       case 'active':
-        return { bg: '#FFF9C4', text: '#6D5E08', label: 'ACTIVE' }; // Currently checked-in
+        return { bg: '#FFF9C4', text: '#6D5E08', label: 'ACTIVE' }; 
       case 'completed':
-        return { bg: '#E3F2FD', text: '#0D47A1', label: 'COMPLETED' }; // Completed stay
+        return { bg: '#E3F2FD', text: '#0D47A1', label: 'COMPLETED' };
       case 'cancelled':
         return { bg: '#FFEBEE', text: '#C62828', label: 'CANCELLED' };
       case 'pending_payment':
         return { bg: '#FFF3E0', text: '#E65100', label: 'PENDING PAYMENT' };
       case 'booked':
       default:
-        return { bg: COLORS.primary, text: COLORS.oliveDark, label: 'BOOKED' }; // Awaiting entry
+        return { bg: COLORS.primary, text: COLORS.oliveDark, label: 'BOOKED' }; 
     }
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
       {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.push('/user-home')} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={22} color={COLORS.oliveDark} />
+      <View style={[styles.header, { backgroundColor: theme.surface, borderBottomColor: theme.border }]}>
+        <TouchableOpacity onPress={() => navigation.push('/user-home')} style={[styles.backBtn, { backgroundColor: isDarkMode ? '#3D3D3D' : '#F5F5F5' }]}>
+          <Ionicons name="arrow-back" size={22} color={isDarkMode ? '#FFF' : COLORS.oliveDark} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Booking Ticket</Text>
+        <Text style={[styles.headerTitle, { color: isDarkMode ? '#FFF' : COLORS.oliveDark }]}>Booking Ticket</Text>
         <View style={{ width: 40 }} />
       </View>
 
@@ -197,12 +214,12 @@ export default function TicketScreen() {
         </Animated.View>
 
         <Animated.View style={{ opacity: fadeAnim }}>
-          <Text style={styles.successTitle}>Booking Confirmed! 🎉</Text>
-          <Text style={styles.successSubtitle}>Your parking slot is reserved</Text>
+          <Text style={[styles.successTitle, { color: theme.text }]}>Booking Confirmed! 🎉</Text>
+          <Text style={[styles.successSubtitle, { color: theme.textLight }]}>Your parking slot is reserved</Text>
         </Animated.View>
 
         {/* E-Ticket */}
-        <Animated.View style={[styles.ticket, { opacity: fadeAnim }]}>
+        <Animated.View style={[styles.ticket, { opacity: fadeAnim, backgroundColor: theme.surface }]}>
           {/* Ticket Header */}
           <View style={styles.ticketHeader}>
             <View style={styles.ticketHeaderLeft}>
@@ -223,57 +240,57 @@ export default function TicketScreen() {
 
           {/* Tear Line */}
           <View style={styles.tearLine}>
-            <View style={styles.tearCircleLeft} />
-            <View style={styles.tearDashes} />
-            <View style={styles.tearCircleRight} />
+            <View style={[styles.tearCircleLeft, { backgroundColor: theme.background }]} />
+            <View style={[styles.tearDashes, { borderColor: theme.border }]} />
+            <View style={[styles.tearCircleRight, { backgroundColor: theme.background }]} />
           </View>
 
           {/* Parking Info */}
           <View style={styles.ticketSection}>
             <View style={styles.ticketRow}>
-              <Ionicons name="location" size={16} color={COLORS.olive} />
+              <Ionicons name="location" size={16} color={isDarkMode ? '#FBD427' : COLORS.olive} />
               <View style={{ flex: 1, marginLeft: 10 }}>
-                <Text style={styles.ticketLabel}>Location</Text>
-                <Text style={styles.ticketValue}>{parkingName}</Text>
-                <Text style={styles.ticketSub}>{address}</Text>
+                <Text style={[styles.ticketLabel, { color: theme.textLight }]}>Location</Text>
+                <Text style={[styles.ticketValue, { color: theme.text }]}>{parkingName}</Text>
+                <Text style={[styles.ticketSub, { color: theme.textLight }]}>{address}</Text>
               </View>
             </View>
           </View>
 
           {/* Time Slots */}
-          <View style={styles.timeGrid}>
+          <View style={[styles.timeGrid, { backgroundColor: isDarkMode ? '#333333' : '#FAFAF7' }]}>
             <View style={styles.timeGridItem}>
-              <Text style={styles.timeGridLabel}>Check In</Text>
-              <Text style={styles.timeGridTime}>{start.time}</Text>
-              <Text style={styles.timeGridDate}>{start.date}</Text>
+              <Text style={[styles.timeGridLabel, { color: theme.textLight }]}>Check In</Text>
+              <Text style={[styles.timeGridTime, { color: isDarkMode ? '#FBD427' : COLORS.oliveDark }]}>{start.time}</Text>
+              <Text style={[styles.timeGridDate, { color: theme.textLight }]}>{start.date}</Text>
             </View>
             <View style={styles.timeGridArrow}>
               <Ionicons name="arrow-forward" size={18} color={COLORS.primary} />
             </View>
             <View style={styles.timeGridItem}>
-              <Text style={styles.timeGridLabel}>Check Out</Text>
-              <Text style={styles.timeGridTime}>{end.time}</Text>
-              <Text style={styles.timeGridDate}>{end.date}</Text>
+              <Text style={[styles.timeGridLabel, { color: theme.textLight }]}>Check Out</Text>
+              <Text style={[styles.timeGridTime, { color: isDarkMode ? '#FBD427' : COLORS.oliveDark }]}>{end.time}</Text>
+              <Text style={[styles.timeGridDate, { color: theme.textLight }]}>{end.date}</Text>
             </View>
           </View>
 
           {/* Vehicle, Spot & Amount */}
           <View style={styles.detailsGrid}>
             <View style={styles.detailItem}>
-              <Text style={styles.detailLabel}>Vehicle</Text>
-              <Text style={styles.detailValue}>
-                {booking.vehicleType === 'car' ? '🚗 Car' : '🏍️ Bike'}
+              <Text style={[styles.detailLabel, { color: theme.textLight }]}>Vehicle</Text>
+              <Text style={[styles.detailValue, { color: theme.text }]}>
+                {booking.vehicleType === 'car' ? '🚗' : '🏍️'} {booking.vehicleNumber || (booking.vehicleType === 'car' ? 'Car' : 'Bike')}
               </Text>
             </View>
-            <View style={styles.detailDivider} />
+            <View style={[styles.detailDivider, { backgroundColor: theme.border }]} />
             <View style={styles.detailItem}>
-              <Text style={styles.detailLabel}>Spot No.</Text>
-              <Text style={[styles.detailValue, { color: COLORS.olive }]}>{spotName}</Text>
+              <Text style={[styles.detailLabel, { color: theme.textLight }]}>Spot No.</Text>
+              <Text style={[styles.detailValue, { color: isDarkMode ? '#FBD427' : COLORS.olive }]}>{spotName}</Text>
             </View>
-            <View style={styles.detailDivider} />
+            <View style={[styles.detailDivider, { backgroundColor: theme.border }]} />
             <View style={styles.detailItem}>
-              <Text style={styles.detailLabel}>Amount</Text>
-              <Text style={[styles.detailValue]}>₹{booking.totalAmount}</Text>
+              <Text style={[styles.detailLabel, { color: theme.textLight }]}>Amount</Text>
+              <Text style={[styles.detailValue, { color: theme.text }]}>₹{booking.totalAmount}</Text>
             </View>
           </View>
 
@@ -281,22 +298,22 @@ export default function TicketScreen() {
           {(booking.entryTime || booking.exitTime) && (
             <>
               <View style={styles.tearLine}>
-                <View style={styles.tearCircleLeft} />
-                <View style={styles.tearDashes} />
-                <View style={styles.tearCircleRight} />
+                <View style={[styles.tearCircleLeft, { backgroundColor: theme.background }]} />
+                <View style={[styles.tearDashes, { borderColor: theme.border }]} />
+                <View style={[styles.tearCircleRight, { backgroundColor: theme.background }]} />
               </View>
               <View style={styles.ticketSection}>
-                <Text style={[styles.qrTitle, { marginBottom: 12, fontSize: 13 }]}>Gate Logs</Text>
+                <Text style={[styles.qrTitle, { marginBottom: 12, fontSize: 13, color: isDarkMode ? '#FFF' : COLORS.oliveDark }]}>Gate Logs</Text>
                 
                 {booking.entryTime && (
                   <View style={[styles.ticketRow, { marginBottom: booking.exitTime ? 12 : 0 }]}>
                     <Ionicons name="log-in" size={16} color="#2E7D32" style={{ marginTop: 2 }} />
                     <View style={{ flex: 1, marginLeft: 10 }}>
-                      <Text style={styles.ticketLabel}>Checked In</Text>
-                      <Text style={styles.ticketValue}>
+                      <Text style={[styles.ticketLabel, { color: theme.textLight }]}>Checked In</Text>
+                      <Text style={[styles.ticketValue, { color: theme.text }]}>
                         {new Date(booking.entryTime).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}
                       </Text>
-                      <Text style={styles.ticketSub}>
+                      <Text style={[styles.ticketSub, { color: theme.textLight }]}>
                         {new Date(booking.entryTime).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
                       </Text>
                     </View>
@@ -307,11 +324,11 @@ export default function TicketScreen() {
                   <View style={styles.ticketRow}>
                     <Ionicons name="log-out" size={16} color="#0D47A1" style={{ marginTop: 2 }} />
                     <View style={{ flex: 1, marginLeft: 10 }}>
-                      <Text style={styles.ticketLabel}>Checked Out</Text>
-                      <Text style={styles.ticketValue}>
+                      <Text style={[styles.ticketLabel, { color: theme.textLight }]}>Checked Out</Text>
+                      <Text style={[styles.ticketValue, { color: theme.text }]}>
                         {new Date(booking.exitTime).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}
                       </Text>
-                      <Text style={styles.ticketSub}>
+                      <Text style={[styles.ticketSub, { color: theme.textLight }]}>
                         {new Date(booking.exitTime).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
                       </Text>
                     </View>
@@ -323,14 +340,14 @@ export default function TicketScreen() {
 
           {/* Tear Line */}
           <View style={styles.tearLine}>
-            <View style={styles.tearCircleLeft} />
-            <View style={styles.tearDashes} />
-            <View style={styles.tearCircleRight} />
+            <View style={[styles.tearCircleLeft, { backgroundColor: theme.background }]} />
+            <View style={[styles.tearDashes, { borderColor: theme.border }]} />
+            <View style={[styles.tearCircleRight, { backgroundColor: theme.background }]} />
           </View>
 
           {/* QR Code Section */}
           <View style={styles.qrSection}>
-            <Text style={styles.qrTitle}>Scan at Entry Gate</Text>
+            <Text style={[styles.qrTitle, { color: isDarkMode ? '#FFF' : COLORS.oliveDark }]}>Scan at Entry Gate</Text>
             {booking.qrCodeImage ? (
               <Image
                 source={{ uri: booking.qrCodeImage }}
@@ -338,24 +355,24 @@ export default function TicketScreen() {
                 resizeMode="contain"
               />
             ) : (
-              <View style={styles.qrFallback}>
-                <Text style={styles.qrFallbackText}>{booking.qrCode}</Text>
-                <Text style={styles.qrHint}>Show this code at the parking gate</Text>
+              <View style={[styles.qrFallback, { backgroundColor: isDarkMode ? '#333' : COLORS.badgeBg }]}>
+                <Text style={[styles.qrFallbackText, { color: isDarkMode ? '#FFF' : COLORS.oliveDark }]}>{booking.qrCode}</Text>
+                <Text style={[styles.qrHint, { color: theme.textLight }]}>Show this code at the parking gate</Text>
               </View>
             )}
-            <Text style={styles.qrNote}>Valid for this booking only</Text>
+            <Text style={[styles.qrNote, { color: theme.textLight }]}>Valid for this booking only</Text>
           </View>
         </Animated.View>
 
         {/* Action Buttons */}
         <Animated.View style={[styles.actions, { opacity: fadeAnim }]}>
-          <TouchableOpacity style={styles.actionBtn} onPress={handleShare} activeOpacity={0.8}>
-            <Ionicons name="share-social-outline" size={18} color={COLORS.oliveDark} />
-            <Text style={styles.shareBtnText}>Share Ticket</Text>
+          <TouchableOpacity style={[styles.actionBtn, { backgroundColor: theme.surface, borderColor: theme.border }]} onPress={handleShare} activeOpacity={0.8}>
+            <Ionicons name="share-social-outline" size={18} color={isDarkMode ? '#FFF' : COLORS.oliveDark} />
+            <Text style={[styles.shareBtnText, { color: theme.text }]}>Share Ticket</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.actionBtn, styles.downloadBtn]} onPress={handleDownloadQR} activeOpacity={0.8}>
-            <Ionicons name="download-outline" size={18} color={COLORS.oliveDark} />
-            <Text style={[styles.shareBtnText, { color: COLORS.oliveDark }]}>Download JPG</Text>
+          <TouchableOpacity style={[styles.actionBtn, styles.downloadBtn, { backgroundColor: isDarkMode ? '#1E2D1E' : '#F0FFF0', borderColor: isDarkMode ? '#2E7D32' : COLORS.olive }]} onPress={handleDownloadQR} activeOpacity={0.8}>
+            <Ionicons name="download-outline" size={18} color={isDarkMode ? '#81C784' : COLORS.oliveDark} />
+            <Text style={[styles.shareBtnText, { color: isDarkMode ? '#81C784' : COLORS.oliveDark }]}>Download JPG</Text>
           </TouchableOpacity>
           
         </Animated.View>
@@ -363,7 +380,7 @@ export default function TicketScreen() {
         {/* View Bookings Link */}
         <Animated.View style={{ opacity: fadeAnim, alignItems: 'center', marginBottom: 40 }}>
           <TouchableOpacity onPress={() => navigation.push('/my-bookings')}>
-            <Text style={styles.viewAllText}>View All Bookings</Text>
+            <Text style={[styles.viewAllText, { color: isDarkMode ? '#FBD427' : COLORS.olive }]}>View All Bookings</Text>
           </TouchableOpacity>
         </Animated.View>
 

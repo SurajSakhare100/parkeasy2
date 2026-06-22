@@ -2,7 +2,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import React, { useMemo, useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
-  Alert, ActivityIndicator, Platform
+  Alert, ActivityIndicator, Platform, TextInput
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -10,6 +10,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { COLORS, SIZES, SHADOWS } from '../../theme';
 import bookingService from '../../services/bookingService';
+import { useTheme } from '../../context/ThemeContext';
 
 const VEHICLE_TYPES = [
   { key: 'car', label: 'Car', icon: 'car-outline' },
@@ -35,6 +36,7 @@ function formatDate(date) {
 
 export default function BookingScreen() {
   const router = useRouter();
+  const { theme, isDarkMode } = useTheme();
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams();
   
@@ -47,13 +49,14 @@ export default function BookingScreen() {
 
   if (!parking) {
     return (
-      <SafeAreaView style={styles.container}>
-        <Text style={{ textAlign: 'center', marginTop: 50 }}>Parking details not found.</Text>
+      <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
+        <Text style={{ textAlign: 'center', marginTop: 50, color: theme.text }}>Parking details not found.</Text>
       </SafeAreaView>
     );
   }
 
   const [vehicleType, setVehicleType] = useState(params?.vehicleType || 'car');
+  const [vehicleNumber, setVehicleNumber] = useState(params?.vehicleNumber || '');
   const [selectedHours, setSelectedHours] = useState(params?.selectedDuration ? parseInt(params.selectedDuration, 10) : 1);
   const [selectedSlot, setSelectedSlot] = useState(params?.selectedSlot || null);
   const [loading, setLoading] = useState(false);
@@ -64,6 +67,7 @@ export default function BookingScreen() {
 
   useEffect(() => {
     if (params?.vehicleType) setVehicleType(params.vehicleType);
+    if (params?.vehicleNumber) setVehicleNumber(params.vehicleNumber);
     if (params?.selectedSlot) setSelectedSlot(params.selectedSlot);
     if (params?.selectedDuration) setSelectedHours(parseInt(params.selectedDuration, 10));
     if (params?.startDate) {
@@ -72,7 +76,7 @@ export default function BookingScreen() {
         setStartDate(parsed);
       }
     }
-  }, [params?.vehicleType, params?.selectedSlot, params?.selectedDuration, params?.startDate]);
+  }, [params?.vehicleType, params?.vehicleNumber, params?.selectedSlot, params?.selectedDuration, params?.startDate]);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
 
@@ -99,6 +103,10 @@ export default function BookingScreen() {
   };
 
   const handleProceedToPayment = async () => {
+    if (!vehicleNumber.trim()) {
+      Alert.alert("Vehicle Number", "Please enter your vehicle number to continue.");
+      return;
+    }
     if (!selectedSlot) {
       Alert.alert("Select a Spot", "Please select a specific parking spot to continue.");
       return;
@@ -113,6 +121,7 @@ export default function BookingScreen() {
       const result = await bookingService.createBooking({
         parkingId: parking._id,
         vehicleType,
+        vehicleNumber,
         spotName: selectedSlot,
         startTime: startTime.toISOString(),
         endTime: endTime.toISOString(),
@@ -126,6 +135,7 @@ export default function BookingScreen() {
           durationHours: result.durationHours,
           parking: JSON.stringify(parking),
           vehicleType,
+          vehicleNumber,
           spotName: selectedSlot,
           startTime: startTime.toISOString(),
           endTime: endTime.toISOString(),
@@ -139,23 +149,23 @@ export default function BookingScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={22} color={COLORS.oliveDark} />
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
+      <View style={[styles.header, { backgroundColor: theme.surface, borderBottomColor: theme.border }]}>
+        <TouchableOpacity onPress={() => router.back()} style={[styles.backBtn, { backgroundColor: isDarkMode ? '#3D3D3D' : '#F5F5F5' }]}>
+          <Ionicons name="arrow-back" size={22} color={isDarkMode ? '#FFF' : COLORS.oliveDark} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Details Selection</Text>
+        <Text style={[styles.headerTitle, { color: isDarkMode ? '#FFF' : COLORS.oliveDark }]}>Details Selection</Text>
         <View style={{ width: 40 }} />
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
 
         {/* ── PARKING INFO ── */}
-        <View style={styles.summaryCard}>
-          <Ionicons name="location" size={20} color={COLORS.oliveDark} style={{ marginRight: 12 }} />
+        <View style={[styles.summaryCard, { backgroundColor: theme.surface }]}>
+          <Ionicons name="location" size={20} color={isDarkMode ? '#FFF' : COLORS.oliveDark} style={{ marginRight: 12 }} />
           <View style={{ flex: 1 }}>
-            <Text style={styles.summaryTitle} numberOfLines={1}>{parking.name}</Text>
-            <Text style={styles.summaryAddress} numberOfLines={1}>{parking.address}</Text>
+            <Text style={[styles.summaryTitle, { color: theme.text }]} numberOfLines={1}>{parking.name}</Text>
+            <Text style={[styles.summaryAddress, { color: theme.textLight }]} numberOfLines={1}>{parking.address}</Text>
           </View>
           <View style={styles.priceBadge}>
             <Text style={styles.priceBadgeText}>₹{parking.pricePerHour}/hr</Text>
@@ -168,34 +178,55 @@ export default function BookingScreen() {
           {VEHICLE_TYPES.map((v) => (
             <TouchableOpacity
               key={v.key}
-              style={[styles.vehicleCard, vehicleType === v.key && styles.vehicleCardActive]}
+              style={[
+                styles.vehicleCard, 
+                { backgroundColor: theme.surface, borderColor: 'transparent' },
+                vehicleType === v.key && {
+                  backgroundColor: isDarkMode ? '#FBD427' : COLORS.oliveDark,
+                  borderColor: isDarkMode ? '#FBD427' : COLORS.oliveDark
+                }
+              ]}
               onPress={() => {
                   setVehicleType(v.key);
                   setSelectedSlot(null);
               }}
             >
-              <Ionicons name={v.icon} size={28} color={vehicleType === v.key ? COLORS.oliveDark : '#999'} />
-              <Text style={[styles.vehicleLabel, vehicleType === v.key && styles.vehicleLabelActive]}>{v.label}</Text>
+              <Ionicons name={v.icon} size={28} color={vehicleType === v.key ? (isDarkMode ? '#333' : '#FFF') : theme.textLight} />
+              <Text style={[styles.vehicleLabel, { color: vehicleType === v.key ? (isDarkMode ? '#333' : '#FFF') : theme.textLight }]}>{v.label}</Text>
             </TouchableOpacity>
           ))}
+        </View>
+
+        {/* ── VEHICLE NUMBER ── */}
+        <SectionHeader title="Vehicle Number" />
+        <View style={[styles.inputContainer, { backgroundColor: theme.surface }]}>
+          <Ionicons name="car-outline" size={20} color={isDarkMode ? '#FFF' : COLORS.oliveDark} style={styles.inputIcon} />
+          <TextInput
+            style={[styles.inputField, { color: theme.text }]}
+            placeholder="e.g. MH 12 AB 1234"
+            placeholderTextColor={theme.textLight}
+            value={vehicleNumber}
+            onChangeText={setVehicleNumber}
+            autoCapitalize="characters"
+          />
         </View>
 
         {/* ── DATE & TIME PICKER ── */}
         <SectionHeader title="Select Schedule" />
         <View style={styles.dateTimeContainer}>
-           <TouchableOpacity style={styles.pickerBtn} onPress={() => setShowDatePicker(true)}>
-              <Ionicons name="calendar-outline" size={20} color="#666" />
+           <TouchableOpacity style={[styles.pickerBtn, { backgroundColor: theme.surface }]} onPress={() => setShowDatePicker(true)}>
+              <Ionicons name="calendar-outline" size={20} color={theme.textLight} />
               <View style={styles.pickerTextWrap}>
                   <Text style={styles.pickerLabel}>Date</Text>
-                  <Text style={styles.pickerValue}>{formatDate(startDate)}</Text>
+                  <Text style={[styles.pickerValue, { color: theme.text }]}>{formatDate(startDate)}</Text>
               </View>
            </TouchableOpacity>
 
-           <TouchableOpacity style={styles.pickerBtn} onPress={() => setShowTimePicker(true)}>
-              <Ionicons name="time-outline" size={20} color="#666" />
+           <TouchableOpacity style={[styles.pickerBtn, { backgroundColor: theme.surface }]} onPress={() => setShowTimePicker(true)}>
+              <Ionicons name="time-outline" size={20} color={theme.textLight} />
               <View style={styles.pickerTextWrap}>
                   <Text style={styles.pickerLabel}>Arrival</Text>
-                  <Text style={styles.pickerValue}>{formatTime(startDate)}</Text>
+                  <Text style={[styles.pickerValue, { color: theme.text }]}>{formatTime(startDate)}</Text>
               </View>
            </TouchableOpacity>
         </View>
@@ -224,7 +255,11 @@ export default function BookingScreen() {
           {DURATION_OPTIONS.map((opt) => (
             <TouchableOpacity
               key={opt.hours}
-              style={[styles.durationChip, selectedHours === opt.hours && styles.durationChipActive]}
+              style={[
+                styles.durationChip, 
+                { backgroundColor: theme.surface, borderColor: theme.border },
+                selectedHours === opt.hours && styles.durationChipActive
+              ]}
               onPress={() => setSelectedHours(opt.hours)}
             >
               <Text style={[styles.durationChipText, selectedHours === opt.hours && styles.durationChipTextActive]}>{opt.label}</Text>
@@ -234,60 +269,61 @@ export default function BookingScreen() {
 
         {/* ── SLOT SELECTION NAVIGATION ── */}
         <SectionHeader title="Slot Selection" subtitle="Choose your vehicle type and select a spot separately" />
-        <View style={styles.slotSummaryCard}>
+        <View style={[styles.slotSummaryCard, { backgroundColor: theme.surface }]}>
           <View style={styles.slotSummaryLeft}>
-            <Text style={styles.slotSummaryLabel}>Selected vehicle</Text>
-            <Text style={styles.slotSummaryValue}>{vehicleType === 'car' ? 'Car' : 'Bike'}</Text>
-            <Text style={styles.slotSummaryLabel}>Chosen slot</Text>
-            <Text style={styles.slotSummaryValue}>{selectedSlot || 'No slot selected yet'}</Text>
+            <Text style={[styles.slotSummaryLabel, { color: theme.textLight }]}>Selected vehicle</Text>
+            <Text style={[styles.slotSummaryValue, { color: theme.text }]}>{vehicleType === 'car' ? 'Car' : 'Bike'}</Text>
+            <Text style={[styles.slotSummaryLabel, { color: theme.textLight }]}>Chosen slot</Text>
+            <Text style={[styles.slotSummaryValue, { color: theme.text }]}>{selectedSlot || 'No slot selected yet'}</Text>
           </View>
           <TouchableOpacity
-            style={styles.chooseSlotButton}
+            style={[styles.chooseSlotButton, { backgroundColor: isDarkMode ? '#FBD427' : COLORS.oliveDark }]}
             onPress={() => router.push({
               pathname: '/(user)/slot-selection',
               params: {
                 parking: JSON.stringify(parking),
                 vehicleType,
+                vehicleNumber,
                 selectedDuration: selectedHours.toString(),
                 startDate: startDate.toISOString(),
                 selectedSlot,
               }
             })}
           >
-            <Text style={styles.chooseSlotText}>{selectedSlot ? 'Change Slot' : 'Choose Slot'}</Text>
+            <Text style={[styles.chooseSlotText, { color: isDarkMode ? '#333' : '#FFF' }]}>{selectedSlot ? 'Change Slot' : 'Choose Slot'}</Text>
           </TouchableOpacity>
         </View>
 
         {/* ── FARE SUMMARY ── */}
-        <View style={styles.fareCard}>
-           <Text style={styles.fareTitle}>Booking Summary</Text>
+        <View style={[styles.fareCard, { backgroundColor: theme.surface }]}>
+           <Text style={[styles.fareTitle, { color: theme.text }]}>Booking Summary</Text>
            <View style={styles.fareRow}>
-              <Text style={styles.fareLabel}>Arrival</Text>
-              <Text style={styles.fareValueText}>{formatTime(startTime)}, {formatDate(startDate)}</Text>
+              <Text style={[styles.fareLabel, { color: theme.textLight }]}>Arrival</Text>
+              <Text style={[styles.fareValueText, { color: theme.text }]}>{formatTime(startTime)}, {formatDate(startDate)}</Text>
            </View>
            <View style={styles.fareRow}>
-              <Text style={styles.fareLabel}>Total Hours</Text>
-              <Text style={styles.fareValueText}>{selectedHours} hours</Text>
+              <Text style={[styles.fareLabel, { color: theme.textLight }]}>Total Hours</Text>
+              <Text style={[styles.fareValueText, { color: theme.text }]}>{selectedHours} hours</Text>
            </View>
-           <View style={styles.fareDivider} />
+           <View style={[styles.fareDivider, { backgroundColor: theme.border }]} />
            <View style={styles.fareRow}>
-              <Text style={styles.fareLabel}>Selected Spot</Text>
-              <Text style={[styles.fareValueText, { color: COLORS.oliveDark, fontWeight: 'bold' }]}>{selectedSlot || 'Not Chosen'}</Text>
+              <Text style={[styles.fareLabel, { color: theme.textLight }]}>Selected Spot</Text>
+              <Text style={[styles.fareValueText, { color: isDarkMode ? '#FBD427' : COLORS.oliveDark, fontWeight: 'bold' }]}>{selectedSlot || 'Not Chosen'}</Text>
            </View>
         </View>
 
         <View style={styles.policyNotice}>
-          <Ionicons name="information-circle" size={16} color="#666" />
-          <Text style={styles.policyText}>Note: Spot reservation depends on availability at arrival.</Text>
+          <Ionicons name="information-circle" size={16} color={theme.textLight} />
+          <Text style={[styles.policyText, { color: theme.textLight }]}>Note: Spot reservation depends on availability at arrival.</Text>
         </View>
 
       </ScrollView>
 
       {/* ── FOOTER ── */}
-      <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 20) }]}>
+      <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 20), backgroundColor: theme.surface, borderTopColor: theme.border }]}>
         <View>
-          <Text style={styles.footerLabel}>Grand Total</Text>
-          <Text style={styles.footerValue}>₹{totalAmount}</Text>
+          <Text style={[styles.footerLabel, { color: theme.textLight }]}>Grand Total</Text>
+          <Text style={[styles.footerValue, { color: theme.text }]}>₹{totalAmount}</Text>
         </View>
         <TouchableOpacity
           style={[styles.payBtn, (!selectedSlot || loading) && { opacity: 0.6 }]}
@@ -308,10 +344,11 @@ export default function BookingScreen() {
 }
 
 function SectionHeader({ title, subtitle }) {
+    const { theme } = useTheme();
     return (
         <View style={{ marginBottom: 12, marginTop: 15 }}>
-            <Text style={styles.sectionTitle}>{title}</Text>
-            {subtitle && <Text style={styles.sectionSubtitle}>{subtitle}</Text>}
+            <Text style={[styles.sectionTitle, { color: theme.text }]}>{title}</Text>
+            {subtitle && <Text style={[styles.sectionSubtitle, { color: theme.textLight }]}>{subtitle}</Text>}
         </View>
     );
 }
@@ -341,9 +378,15 @@ const styles = StyleSheet.create({
   vehicleCard: {
     flex: 1, backgroundColor: '#FFF', borderRadius: 12, padding: 16, alignItems: 'center', borderWidth: 2, borderColor: 'transparent', ...SHADOWS.light,
   },
-  vehicleCardActive: { borderColor: '#FBD427', backgroundColor: '#FFFDF0' },
+  vehicleCardActive: { borderColor: COLORS.oliveDark, backgroundColor: COLORS.oliveDark },
   vehicleLabel: { marginTop: 6, fontSize: 13, fontWeight: '600', color: '#999' },
-  vehicleLabelActive: { color: COLORS.oliveDark },
+  vehicleLabelActive: { color: '#FFF' },
+
+  inputContainer: {
+    flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', borderRadius: 12, paddingHorizontal: 16, height: 50, marginBottom: 15, ...SHADOWS.light,
+  },
+  inputIcon: { marginRight: 10 },
+  inputField: { flex: 1, fontSize: 15, color: '#333' },
 
   dateTimeContainer: { flexDirection: 'row', gap: 12, marginBottom: 15 },
   pickerBtn: {

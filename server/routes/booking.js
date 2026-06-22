@@ -1,5 +1,6 @@
 import express from "express";
 import {
+  getBookedSpots,
   createBooking,
   getMyBookings,
   getBookingById,
@@ -11,6 +12,9 @@ import {
 import { protect } from "../middleware/auth.js";
 
 const router = express.Router();
+
+// GET /api/booking/booked-spots
+router.get("/booked-spots", protect, getBookedSpots);
 
 // POST /api/booking/create
 router.post("/create", protect, createBooking);

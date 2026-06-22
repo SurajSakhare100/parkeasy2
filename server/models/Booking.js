@@ -22,6 +22,10 @@ const bookingSchema = new Schema(
       enum: ["car", "bike"],
       required: true,
     },
+    vehicleNumber: {
+      type: String,
+      required: true,
+    },
     spotName: {
       type: String,
       required: true,

@@ -6,9 +6,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { COLORS, SIZES, SHADOWS } from '../../theme';
 import userService from '../../services/userService';
+import { useTheme } from '../../context/ThemeContext';
 
 export default function ProfileScreen() {
   const router = useRouter();
+  const { theme, isDarkMode } = useTheme();
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -37,48 +39,53 @@ export default function ProfileScreen() {
   const handleLogout = async () => {
     await AsyncStorage.removeItem('userToken');
     await AsyncStorage.removeItem('user');
-    router.replace('/(auth)/login');
+    import('react-native').then(({ DeviceEventEmitter }) => {
+        DeviceEventEmitter.emit('auth_error');
+    });
   };
 
   if (loading) {
     return (
-      <View style={styles.center}>
+      <View style={[styles.center, { backgroundColor: theme.background }]}>
         <ActivityIndicator size="large" color={COLORS.primary} />
       </View>
     );
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.background }]}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Profile</Text>
+        <Text style={[styles.headerTitle, { color: theme.text }]}>Profile</Text>
       </View>
 
       <View style={styles.container}>
-        <View style={styles.profileCard}>
-          <View style={styles.avatarPlaceholder}>
-            <Ionicons name="person" size={50} color={COLORS.olive} />
+        <View style={[styles.profileCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+          <View style={[styles.avatarPlaceholder, { backgroundColor: isDarkMode ? '#3D3D3D' : COLORS.badgeBg }]}>
+            <Ionicons name="person" size={50} color={isDarkMode ? '#CCCCCC' : COLORS.olive} />
           </View>
-          <Text style={styles.userName}>{user?.name || 'User'}</Text>
-          <Text style={styles.userEmail}>{user?.email}</Text>
-          {user?.phone ? <Text style={styles.userPhone}>{user?.phone}</Text> : null}
+          <Text style={[styles.userName, { color: theme.text }]}>{user?.name || 'User'}</Text>
+          <Text style={[styles.userEmail, { color: theme.textLight }]}>{user?.email}</Text>
+          {user?.phone ? <Text style={[styles.userPhone, { color: theme.textLight }]}>{user?.phone}</Text> : null}
         </View>
 
         <View style={styles.optionsContainer}>
-          <TouchableOpacity style={styles.optionItem}>
-            <View style={styles.optionIconContainer}>
-              <Ionicons name="settings-outline" size={20} color={COLORS.oliveDark} />
+          <TouchableOpacity 
+            style={[styles.optionItem, { borderBottomColor: theme.border }]}
+            onPress={() => router.push('/(user)/settings')}
+          >
+            <View style={[styles.optionIconContainer, { backgroundColor: isDarkMode ? '#3D3D3D' : COLORS.badgeBg }]}>
+              <Ionicons name="settings-outline" size={20} color={isDarkMode ? '#FBD427' : COLORS.oliveDark} />
             </View>
-            <Text style={styles.optionText}>Settings</Text>
-            <Ionicons name="chevron-forward" size={20} color={COLORS.textLight} />
+            <Text style={[styles.optionText, { color: theme.text }]}>Settings</Text>
+            <Ionicons name="chevron-forward" size={20} color={theme.textLight} />
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.optionItem}>
-            <View style={styles.optionIconContainer}>
-              <Ionicons name="help-circle-outline" size={20} color={COLORS.oliveDark} />
+          <TouchableOpacity style={[styles.optionItem, { borderBottomColor: theme.border }]}>
+            <View style={[styles.optionIconContainer, { backgroundColor: isDarkMode ? '#3D3D3D' : COLORS.badgeBg }]}>
+              <Ionicons name="help-circle-outline" size={20} color={isDarkMode ? '#FBD427' : COLORS.oliveDark} />
             </View>
-            <Text style={styles.optionText}>Help & Support</Text>
-            <Ionicons name="chevron-forward" size={20} color={COLORS.textLight} />
+            <Text style={[styles.optionText, { color: theme.text }]}>Help & Support</Text>
+            <Ionicons name="chevron-forward" size={20} color={theme.textLight} />
           </TouchableOpacity>
         </View>
 

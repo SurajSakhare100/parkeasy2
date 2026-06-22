@@ -8,8 +8,15 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { COLORS, SIZES, SHADOWS } from '../../theme';
 import bookingService from '../../services/bookingService';
+import { useTheme } from '../../context/ThemeContext';
 
-const STATUS_CONFIG = {
+const getStatusConfig = (isDarkMode) => isDarkMode ? {
+  booked: { label: 'Booked', bg: '#1B5E20', text: '#E8F5E9' },
+  active: { label: 'Active', bg: '#8A6B00', text: '#FFFDE7' },
+  pending_payment: { label: 'Incomplete', bg: '#A75D00', text: '#FFE0B2' },
+  completed: { label: 'Completed', bg: '#424242', text: '#E0E0E0' },
+  cancelled: { label: 'Cancelled', bg: '#B71C1C', text: '#FFEBEE' },
+} : {
   booked: { label: 'Booked', bg: '#E8F5E9', text: '#2E7D32' },
   active: { label: 'Active', bg: '#FFF9C4', text: '#6D5E08' },
   pending_payment: { label: 'Incomplete', bg: '#FFF3E0', text: '#E65100' },
@@ -27,6 +34,7 @@ function formatSlot(startTime, endTime) {
 
 export default function MyBookingsScreen() {
   const navigation = useRouter();
+  const { theme, isDarkMode } = useTheme();
   const [activeTab, setActiveTab] = useState('ACTIVE');
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -66,25 +74,25 @@ export default function MyBookingsScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
       {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.canGoBack() ? navigation.back() : navigation.replace('/user-home')} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={22} color={COLORS.oliveDark} />
+      <View style={[styles.header, { backgroundColor: theme.surface, borderBottomColor: theme.border }]}>
+        <TouchableOpacity onPress={() => navigation.canGoBack() ? navigation.back() : navigation.replace('/user-home')} style={[styles.backBtn, { backgroundColor: isDarkMode ? '#3D3D3D' : '#F5F5F5' }]}>
+          <Ionicons name="arrow-back" size={22} color={isDarkMode ? '#FFF' : COLORS.oliveDark} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>My Bookings</Text>
+        <Text style={[styles.headerTitle, { color: isDarkMode ? '#FFF' : COLORS.oliveDark }]}>My Bookings</Text>
         <View style={{ width: 40 }} />
       </View>
 
       {/* Toggle */}
-      <View style={styles.toggleContainer}>
+      <View style={[styles.toggleContainer, { backgroundColor: theme.surface, borderColor: theme.border }]}>
         {['ACTIVE', 'COMPLETED'].map((tab) => (
           <TouchableOpacity
             key={tab}
             style={[styles.toggleButton, activeTab === tab && styles.toggleButtonActive]}
             onPress={() => setActiveTab(tab)}
           >
-            <Text style={[styles.toggleText, activeTab === tab && styles.toggleTextActive]}>
+            <Text style={[styles.toggleText, { color: activeTab === tab ? (isDarkMode ? '#FFF' : COLORS.oliveDark) : theme.textLight }]}>
               {tab}
             </Text>
           </TouchableOpacity>
@@ -95,13 +103,13 @@ export default function MyBookingsScreen() {
       {loading ? (
         <View style={styles.centered}>
           <ActivityIndicator size="large" color={COLORS.primary} />
-          <Text style={styles.loadingText}>Loading bookings…</Text>
+          <Text style={[styles.loadingText, { color: theme.textLight }]}>Loading bookings…</Text>
         </View>
       ) : filtered.length === 0 ? (
         <View style={styles.centered}>
-          <Ionicons name="car-outline" size={60} color={COLORS.border} />
-          <Text style={styles.emptyTitle}>No {activeTab.toLowerCase()} bookings</Text>
-          <Text style={styles.emptySubtitle}>Your bookings will appear here</Text>
+          <Ionicons name="car-outline" size={60} color={isDarkMode ? '#555' : COLORS.border} />
+          <Text style={[styles.emptyTitle, { color: theme.text }]}>No {activeTab.toLowerCase()} bookings</Text>
+          <Text style={[styles.emptySubtitle, { color: theme.textLight }]}>Your bookings will appear here</Text>
           <TouchableOpacity
             style={styles.findParkingBtn}
             onPress={() => navigation.push('/user-home')}
@@ -116,29 +124,33 @@ export default function MyBookingsScreen() {
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.primary} />}
         >
           {filtered.map((item) => {
-            const statusCfg = STATUS_CONFIG[item.status] || STATUS_CONFIG.booked;
+            const statusConfig = getStatusConfig(isDarkMode);
+            const statusCfg = statusConfig[item.status] || statusConfig.booked;
             const parking = item.parkingId;
             const imgUri = parking?.images?.[0] ||
               'https://images.unsplash.com/photo-1590674899484-13da0d1b58f5?w=200&h=200&fit=crop';
 
             return (
-              <View key={item._id} style={styles.card}>
+              <View key={item._id} style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
                 <View style={styles.cardTop}>
                   <Image source={{ uri: imgUri }} style={styles.cardImage} />
                   <View style={styles.cardInfo}>
-                    <Text style={styles.cardTitle} numberOfLines={1}>
+                    <Text style={[styles.cardTitle, { color: theme.text }]} numberOfLines={1}>
                       {parking?.name || 'Parking'}
                     </Text>
-                    <Text style={styles.cardAddress} numberOfLines={1}>
+                    <Text style={[styles.cardAddress, { color: theme.textLight }]} numberOfLines={1}>
                       {parking?.address || '—'}
                     </Text>
-                    <Text style={styles.slotText} numberOfLines={1}>
+                    <Text style={[styles.slotText, { color: theme.textLight }]} numberOfLines={1}>
                       {formatSlot(item.startTime, item.endTime)}
                     </Text>
+                    <Text style={[styles.vehicleText, { color: theme.textLight }]} numberOfLines={1}>
+                      {item.vehicleType === 'car' ? '🚗' : '🏍️'} {item.vehicleNumber}
+                    </Text>
                     <View style={styles.priceRow}>
-                      <Text style={styles.price}>
+                      <Text style={[styles.price, { color: isDarkMode ? '#FBD427' : COLORS.olive }]}>
                         ₹{item.totalAmount}
-                        <Text style={styles.priceUnit}> total</Text>
+                        <Text style={[styles.priceUnit, { color: theme.textLight }]}> total</Text>
                       </Text>
                       <View style={[styles.statusBadge, { backgroundColor: statusCfg.bg }]}>
                         <Text style={[styles.statusBadgeText, { color: statusCfg.text }]}>
@@ -149,7 +161,7 @@ export default function MyBookingsScreen() {
                   </View>
                 </View>
 
-                <View style={styles.divider} />
+                <View style={[styles.divider, { backgroundColor: theme.border }]} />
 
                 <View style={styles.actionRow}>
                   <TouchableOpacity
@@ -162,6 +174,7 @@ export default function MyBookingsScreen() {
                           parkingName: parking?.name,
                           address: parking?.address,
                           vehicleType: item.vehicleType,
+                          vehicleNumber: item.vehicleNumber,
                           startTime: item.startTime,
                           endTime: item.endTime,
                           totalAmount: item.totalAmount,
@@ -288,7 +301,10 @@ const styles = StyleSheet.create({
     fontSize: 12, color: COLORS.textLight, marginBottom: 4,
   },
   slotText: {
-    fontSize: 11, color: COLORS.textMuted, marginBottom: 6,
+    fontSize: 11, color: COLORS.textMuted, marginBottom: 4,
+  },
+  vehicleText: {
+    fontSize: 12, color: COLORS.textLight, marginBottom: 6, fontWeight: '500',
   },
   priceRow: {
     flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap',

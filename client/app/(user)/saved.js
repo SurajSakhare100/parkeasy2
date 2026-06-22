@@ -6,6 +6,7 @@ import { COLORS, SIZES, SHADOWS } from '../../theme';
 import { useRouter, useIsFocused } from 'expo-router';
 import userService from '../../services/userService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useTheme } from '../../context/ThemeContext';
 
 // Default parking images if none provided — cycles through 3 curated photos
 const FALLBACK_IMAGES = [
@@ -18,6 +19,7 @@ const FALLBACK_IMAGES = [
 export default function SavedParkingScreen() {
   const navigation = useRouter();
   const isFocused = useIsFocused();
+  const { theme, isDarkMode } = useTheme();
   const [savedLocations, setSavedLocations] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -49,7 +51,7 @@ export default function SavedParkingScreen() {
 
   const renderItem = ({ item, index }) => (
     <TouchableOpacity 
-      style={styles.card} 
+      style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]} 
       activeOpacity={0.8}
       onPress={() => navigation.push({ pathname: '/parking-details', params: { parking: JSON.stringify(item) } })}
     >
@@ -58,8 +60,8 @@ export default function SavedParkingScreen() {
         style={styles.cardImage} 
       />
       <View style={styles.cardInfo}>
-        <Text style={styles.cardTitle}>{item.name}</Text>
-        <Text style={styles.cardAddress}>{item.address || item.locationText}</Text>
+        <Text style={[styles.cardTitle, { color: theme.text }]}>{item.name}</Text>
+        <Text style={[styles.cardAddress, { color: theme.textLight }]}>{item.address || item.locationText}</Text>
       </View>
       <View style={styles.bookmarkIcon}>
         <Ionicons name="bookmark" size={24} color={COLORS.primary} />
@@ -68,13 +70,13 @@ export default function SavedParkingScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <Text style={styles.headerTitle}>Saved Parking</Text>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.background }]}>
+      <Text style={[styles.headerTitle, { color: theme.text }]}>Saved Parking</Text>
       
       {loading ? (
         <ActivityIndicator size="large" color={COLORS.primary} style={{ marginTop: 50 }} />
       ) : savedLocations.length === 0 ? (
-        <Text style={{ textAlign: 'center', marginTop: 50, color: COLORS.textMuted }}>No saved parkings found.</Text>
+        <Text style={{ textAlign: 'center', marginTop: 50, color: theme.textLight }}>No saved parkings found.</Text>
       ) : (
         <FlatList
           data={savedLocations}

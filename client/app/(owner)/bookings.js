@@ -58,7 +58,7 @@ export default function BookingsScreen() {
                 </View>
                 <View style={styles.infoRow}>
                     <Ionicons name="car-outline" size={18} color="#666" />
-                    <Text style={styles.infoText}>Vehicle: {item.vehicleType}</Text>
+                    <Text style={styles.infoText}>Vehicle: {item.vehicleType} - {item.vehicleNumber || 'N/A'}</Text>
                 </View>
             </View>
             <View style={styles.statusRow}>

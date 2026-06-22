@@ -2,12 +2,14 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SIZES } from '../theme';
+import { useTheme } from '../context/ThemeContext';
 
 export default function DetailsInfoSection({ 
   title, address, rating, time, about, 
   spots = [], vehicleTypes = [], amenities = []
 }) {
   const [expanded, setExpanded] = useState(false);
+  const { theme, isDarkMode } = useTheme();
 
   // Count spots per vehicle type
   const carSpots = spots.filter(s => s.vehicleType === 'car');
@@ -24,32 +26,32 @@ export default function DetailsInfoSection({
       {/* ── Title & Rating ── */}
       <View style={styles.headerRow}>
         <View style={{ flex: 1 }}>
-          <Text style={styles.title}>{title}</Text>
+          <Text style={[styles.title, { color: theme.text }]}>{title}</Text>
           <View style={styles.addressRow}>
-            <Ionicons name="location-outline" size={14} color="#A0A0A0" />
-            <Text style={styles.address}>{address}</Text>
+            <Ionicons name="location-outline" size={14} color={theme.textLight} />
+            <Text style={[styles.address, { color: theme.textLight }]}>{address}</Text>
           </View>
         </View>
         <View style={styles.ratingBox}>
           <Ionicons name="star" size={18} color={COLORS.primary} />
-          <Text style={styles.ratingText}>{rating}</Text>
+          <Text style={[styles.ratingText, { color: theme.text }]}>{rating}</Text>
         </View>
       </View>
 
       {/* ── Highlights: Operating Hours ── */}
       <View style={styles.highlightRow}>
-        <View style={styles.highlightCard}>
-          <Ionicons name="time-outline" size={18} color="#4C4223" />
+        <View style={[styles.highlightCard, { backgroundColor: isDarkMode ? '#3D3D3D' : '#F3EDCD' }]}>
+          <Ionicons name="time-outline" size={18} color={isDarkMode ? '#FFF' : '#4C4223'} />
           <View style={{ marginLeft: 8 }}>
-            <Text style={styles.highlightLabel}>Hours</Text>
-            <Text style={styles.highlightValue}>{time}</Text>
+            <Text style={[styles.highlightLabel, { color: theme.textLight }]}>Hours</Text>
+            <Text style={[styles.highlightValue, { color: isDarkMode ? '#FFF' : '#4C4223' }]}>{time}</Text>
           </View>
         </View>
-        <View style={[styles.highlightCard, { marginLeft: 10 }]}>
-          <Ionicons name="car-outline" size={18} color="#4C4223" />
+        <View style={[styles.highlightCard, { marginLeft: 10, backgroundColor: isDarkMode ? '#3D3D3D' : '#F3EDCD' }]}>
+          <Ionicons name="car-outline" size={18} color={isDarkMode ? '#FFF' : '#4C4223'} />
           <View style={{ marginLeft: 8 }}>
-            <Text style={styles.highlightLabel}>Accepts</Text>
-            <Text style={styles.highlightValue}>
+            <Text style={[styles.highlightLabel, { color: theme.textLight }]}>Accepts</Text>
+            <Text style={[styles.highlightValue, { color: isDarkMode ? '#FFF' : '#4C4223' }]}>
               {vehicleTypes.length > 0 ? vehicleTypes.map(v => v.charAt(0).toUpperCase() + v.slice(1)).join(' & ') : 'Car & Bike'}
             </Text>
           </View>
@@ -59,7 +61,7 @@ export default function DetailsInfoSection({
       {/* ── Spot Breakdown ── */}
       {spots.length > 0 && (
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Parking Spots</Text>
+          <Text style={[styles.sectionTitle, { color: theme.textLight }]}>Parking Spots</Text>
           <View style={styles.spotsRow}>
             {carSpots.length > 0 && (
               <View style={styles.spotTypeBadge}>
@@ -84,10 +86,11 @@ export default function DetailsInfoSection({
                 key={i} 
                 style={[
                   styles.chip, 
-                  spot.vehicleType === 'bike' && styles.chipBike
+                  { backgroundColor: isDarkMode ? '#333' : '#EAF3FF', borderColor: isDarkMode ? '#555' : '#C8DFF8' },
+                  spot.vehicleType === 'bike' && { backgroundColor: isDarkMode ? '#224422' : '#F0FFF4', borderColor: isDarkMode ? '#336633' : '#A8E6B8' }
                 ]}
               >
-                <Text style={styles.chipText}>{spot.spotName}</Text>
+                <Text style={[styles.chipText, { color: theme.text }]}>{spot.spotName}</Text>
               </View>
             ))}
           </View>
@@ -96,8 +99,8 @@ export default function DetailsInfoSection({
 
       {/* ── About / Description ── */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>About</Text>
-        <Text style={styles.aboutText}>{displayText || 'No description provided.'}</Text>
+        <Text style={[styles.sectionTitle, { color: theme.textLight }]}>About</Text>
+        <Text style={[styles.aboutText, { color: theme.text }]}>{displayText || 'No description provided.'}</Text>
         {isLong && (
           <TouchableOpacity onPress={() => setExpanded(!expanded)}>
             <Text style={styles.readMore}>{expanded ? 'Show Less' : 'Read More'}</Text>
@@ -108,7 +111,7 @@ export default function DetailsInfoSection({
       {/* ── Amenities ── */}
       {amenities.length > 0 && (
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Amenities</Text>
+          <Text style={[styles.sectionTitle, { color: theme.textLight }]}>Amenities</Text>
           <View style={styles.amenitiesGrid}>
             {amenities.map((item, idx) => {
               let icon = 'shield-checkmark-outline';
@@ -119,10 +122,10 @@ export default function DetailsInfoSection({
               
               return (
                 <View key={idx} style={styles.amenityItem}>
-                  <View style={styles.amenityIconBg}>
-                    <Ionicons name={icon} size={18} color="#4C4223" />
+                  <View style={[styles.amenityIconBg, { backgroundColor: isDarkMode ? '#3D3D3D' : '#F3EDCD' }]}>
+                    <Ionicons name={icon} size={18} color={isDarkMode ? '#FFF' : '#4C4223'} />
                   </View>
-                  <Text style={styles.amenityText}>{item}</Text>
+                  <Text style={[styles.amenityText, { color: theme.text }]}>{item}</Text>
                 </View>
               );
             })}

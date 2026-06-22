@@ -81,6 +81,43 @@ export default function AnalyticsScreen() {
                             <Text style={styles.cardLabelSmall}>Active Spots</Text>
                         </View>
                     </View>
+
+                    {stats.aiPrediction && (
+                        <View style={styles.aiCard}>
+                            <View style={styles.aiHeader}>
+                                <Ionicons name="sparkles" size={24} color="#FBD427" />
+                                <Text style={styles.aiTitle}>AI Insights & Predictions</Text>
+                            </View>
+                            <View style={styles.aiContent}>
+                                <View style={styles.aiRow}>
+                                    <View style={styles.aiItem}>
+                                        <Text style={styles.aiLabel}>Est. Revenue Next Month</Text>
+                                        <Text style={styles.aiValue}>₹{stats.aiPrediction.predictedRevenueNextMonth.toLocaleString()}</Text>
+                                    </View>
+                                    <View style={styles.aiItem}>
+                                        <Text style={styles.aiLabel}>Suggested Price Adj.</Text>
+                                        <Text style={[styles.aiValue, { color: '#2ECC71' }]}>{stats.aiPrediction.suggestedPriceAdjustment}</Text>
+                                    </View>
+                                </View>
+                                <View style={styles.aiRow}>
+                                    <View style={styles.aiItem}>
+                                        <Text style={styles.aiLabel}>Predicted Occupancy</Text>
+                                        <Text style={styles.aiValue}>{stats.aiPrediction.predictedOccupancy}</Text>
+                                    </View>
+                                    <View style={styles.aiItem}>
+                                        <Text style={styles.aiLabel}>Demand Trend</Text>
+                                        <Text style={[styles.aiValue, { textTransform: 'capitalize' }]}>{stats.aiPrediction.demandTrend}</Text>
+                                    </View>
+                                </View>
+                                <View style={styles.aiRowSingle}>
+                                    <View style={styles.aiItem}>
+                                        <Text style={styles.aiLabel}>Peak Hours</Text>
+                                        <Text style={styles.aiValue}>{stats.aiPrediction.peakHours}</Text>
+                                    </View>
+                                </View>
+                            </View>
+                        </View>
+                    )}
                 </ScrollView>
             )}
         </SafeAreaView>
@@ -113,5 +150,20 @@ const styles = StyleSheet.create({
         marginHorizontal: 5, paddingVertical: 24
     },
     cardValueSmall: { fontSize: 24, fontWeight: 'bold', color: '#4C4223', marginVertical: 8 },
-    cardLabelSmall: { fontSize: 14, color: '#666' }
+    cardLabelSmall: { fontSize: 14, color: '#666' },
+    aiCard: {
+        backgroundColor: '#1E1E1E', borderRadius: 14, marginTop: 8, marginBottom: 16,
+        shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1, shadowRadius: 10, elevation: 4, overflow: 'hidden'
+    },
+    aiHeader: {
+        flexDirection: 'row', alignItems: 'center', backgroundColor: '#0A0A0A', padding: 16,
+    },
+    aiTitle: { color: '#FFF', fontSize: 18, fontWeight: 'bold', marginLeft: 8 },
+    aiContent: { padding: 16 },
+    aiRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16 },
+    aiRowSingle: { flexDirection: 'row', justifyContent: 'flex-start' },
+    aiItem: { flex: 1, paddingRight: 8 },
+    aiLabel: { fontSize: 12, color: '#AAA', marginBottom: 4 },
+    aiValue: { fontSize: 16, fontWeight: 'bold', color: '#FFF' }
 });

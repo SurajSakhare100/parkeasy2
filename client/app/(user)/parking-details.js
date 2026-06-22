@@ -4,6 +4,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../../theme';
 import userService from '../../services/userService';
+import { useTheme } from '../../context/ThemeContext';
 
 import DetailsHeaderCarousel from '../../components/DetailsHeaderCarousel';
 import DetailsInfoSection from '../../components/DetailsInfoSection';
@@ -13,6 +14,7 @@ import BottomBookingBar from '../../components/BottomBookingBar';
 export default function ParkingDetailsScreen() {
   const params = useLocalSearchParams();
   const router = useRouter();
+  const { theme, isDarkMode } = useTheme();
 
   const parking = params?.parking
     ? (typeof params.parking === 'string' ? JSON.parse(params.parking) : params.parking)
@@ -59,7 +61,7 @@ export default function ParkingDetailsScreen() {
 
   if (!parking) {
     return (
-      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center', backgroundColor: theme.background }]}>
         <ActivityIndicator color={COLORS.primary} size="large" />
       </View>
     );
@@ -84,7 +86,7 @@ export default function ParkingDetailsScreen() {
       : '24 Hours';
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
 
         {/* Image Carousel (uses real images from Cloudinary or fallbacks) */}

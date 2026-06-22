@@ -4,16 +4,18 @@ const { width } = Dimensions.get('window');
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SIZES, SHADOWS } from '../theme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTheme } from '../context/ThemeContext';
 
 export default function BottomBookingBar({ price, onBookNow, loading = false }) {
   const insets = useSafeAreaInsets();
+  const { theme, isDarkMode } = useTheme();
   
   return (
-    <View style={[styles.container, { paddingBottom: Math.max(insets.bottom, 20) }]}>
+    <View style={[styles.container, { paddingBottom: Math.max(insets.bottom, 20), backgroundColor: theme.surface, borderTopColor: theme.border }]}>
       <View style={styles.content}>
-        <View style={styles.priceContainer}>
-          <Text style={styles.priceLabel}>Price</Text>
-          <Text style={styles.priceText}>
+        <View style={[styles.priceContainer, { backgroundColor: isDarkMode ? '#4D4D4D' : '#EAE5CD' }]}>
+          <Text style={[styles.priceLabel, { color: isDarkMode ? '#FFF' : '#8E6F2A' }]}>Price</Text>
+          <Text style={[styles.priceText, { color: isDarkMode ? '#FFF' : '#333' }]}>
             {price}<Text style={styles.priceUnit}></Text>
           </Text>
         </View>

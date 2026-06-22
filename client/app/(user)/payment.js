@@ -9,9 +9,11 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { WebView } from 'react-native-webview';
 import { COLORS, SIZES, SHADOWS } from '../../theme';
 import paymentService from '../../services/paymentService';
+import { useTheme } from '../../context/ThemeContext';
 
 export default function PaymentScreen() {
   const router = useRouter();
+  const { theme, isDarkMode } = useTheme();
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams();
   const { bookingId, totalAmount, durationHours, parking: parkingParam, vehicleType, startTime, endTime } = params;
@@ -138,10 +140,10 @@ export default function PaymentScreen() {
   // ── Loading / Verifying Screen ──
   if (step === 'loading') {
     return (
-      <SafeAreaView style={styles.loadingContainer}>
+      <SafeAreaView style={[styles.loadingContainer, { backgroundColor: theme.background }]}>
         <ActivityIndicator size="large" color={COLORS.primary} />
-        <Text style={styles.loadingText}>Verifying your payment…</Text>
-        <Text style={styles.loadingSubText}>Please wait, do not close the app</Text>
+        <Text style={[styles.loadingText, { color: theme.text }]}>Verifying your payment…</Text>
+        <Text style={[styles.loadingSubText, { color: theme.textLight }]}>Please wait, do not close the app</Text>
       </SafeAreaView>
     );
   }
@@ -149,12 +151,12 @@ export default function PaymentScreen() {
   // ── Razorpay WebView ──
   if (step === 'webview') {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: '#F8F7F2' }}>
-        <View style={styles.webviewHeader}>
-          <TouchableOpacity onPress={() => setStep('summary')} style={styles.backBtn}>
-            <Ionicons name="arrow-back" size={22} color={COLORS.oliveDark} />
+      <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }}>
+        <View style={[styles.webviewHeader, { backgroundColor: theme.surface, borderBottomColor: theme.border }]}>
+          <TouchableOpacity onPress={() => setStep('summary')} style={[styles.backBtn, { backgroundColor: isDarkMode ? '#3D3D3D' : '#F5F5F5' }]}>
+            <Ionicons name="arrow-back" size={22} color={isDarkMode ? '#FFF' : COLORS.oliveDark} />
           </TouchableOpacity>
-          <Text style={styles.webviewHeaderTitle}>Razorpay Checkout</Text>
+          <Text style={[styles.webviewHeaderTitle, { color: isDarkMode ? '#FFF' : COLORS.oliveDark }]}>Razorpay Checkout</Text>
           <View style={{ width: 40 }} />
         </View>
         <WebView
@@ -166,7 +168,7 @@ export default function PaymentScreen() {
           startInLoadingState
           style={{ flex: 1 }}
           renderLoading={() => (
-            <View style={styles.webviewLoader}>
+            <View style={[styles.webviewLoader, { backgroundColor: theme.background }]}>
               <ActivityIndicator size="large" color={COLORS.primary} />
             </View>
           )}
@@ -180,110 +182,110 @@ export default function PaymentScreen() {
   const endDate = new Date(endTime);
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
       {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={22} color={COLORS.oliveDark} />
+      <View style={[styles.header, { backgroundColor: theme.surface, borderBottomColor: theme.border }]}>
+        <TouchableOpacity onPress={() => router.back()} style={[styles.backBtn, { backgroundColor: isDarkMode ? '#3D3D3D' : '#F5F5F5' }]}>
+          <Ionicons name="arrow-back" size={22} color={isDarkMode ? '#FFF' : COLORS.oliveDark} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Payment Summary</Text>
+        <Text style={[styles.headerTitle, { color: isDarkMode ? '#FFF' : COLORS.oliveDark }]}>Payment Summary</Text>
         <View style={{ width: 40 }} />
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
 
         {/* Secured badge */}
-        <View style={styles.secureBadge}>
-          <Ionicons name="shield-checkmark" size={16} color="#2E7D32" />
-          <Text style={styles.secureBadgeText}>100% Secure Payment via Razorpay</Text>
+        <View style={[styles.secureBadge, { backgroundColor: isDarkMode ? '#1B5E20' : '#E8F5E9' }]}>
+          <Ionicons name="shield-checkmark" size={16} color={isDarkMode ? '#E8F5E9' : '#2E7D32'} />
+          <Text style={[styles.secureBadgeText, { color: isDarkMode ? '#E8F5E9' : '#2E7D32' }]}>100% Secure Payment via Razorpay</Text>
         </View>
 
         {/* Booking Summary Card */}
-        <View style={styles.summaryCard}>
-          <Text style={styles.cardTitle}>Booking Summary</Text>
+        <View style={[styles.summaryCard, { backgroundColor: theme.surface }]}>
+          <Text style={[styles.cardTitle, { color: isDarkMode ? '#FFF' : COLORS.oliveDark }]}>Booking Summary</Text>
 
           <View style={styles.cardRow}>
-            <View style={styles.cardIconWrap}>
-              <Ionicons name="location-outline" size={18} color={COLORS.olive} />
+            <View style={[styles.cardIconWrap, { backgroundColor: isDarkMode ? '#3D3D3D' : COLORS.badgeBg }]}>
+              <Ionicons name="location-outline" size={18} color={isDarkMode ? '#FBD427' : COLORS.olive} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.cardRowLabel}>Parking Spot</Text>
-              <Text style={styles.cardRowValue}>{parking.name}</Text>
-              <Text style={styles.cardRowSub}>{parking.address}</Text>
+              <Text style={[styles.cardRowLabel, { color: theme.textLight }]}>Parking Spot</Text>
+              <Text style={[styles.cardRowValue, { color: theme.text }]}>{parking.name}</Text>
+              <Text style={[styles.cardRowSub, { color: theme.textLight }]}>{parking.address}</Text>
             </View>
           </View>
 
-          <View style={styles.cardDivider} />
+          <View style={[styles.cardDivider, { backgroundColor: theme.border }]} />
 
           <View style={styles.cardRow}>
-            <View style={styles.cardIconWrap}>
-              <Ionicons name={vehicleType === 'car' ? 'car-outline' : 'bicycle-outline'} size={18} color={COLORS.olive} />
+            <View style={[styles.cardIconWrap, { backgroundColor: isDarkMode ? '#3D3D3D' : COLORS.badgeBg }]}>
+              <Ionicons name={vehicleType === 'car' ? 'car-outline' : 'bicycle-outline'} size={18} color={isDarkMode ? '#FBD427' : COLORS.olive} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.cardRowLabel}>Vehicle Type</Text>
-              <Text style={styles.cardRowValue}>{vehicleType === 'car' ? '🚗 Car' : '🏍️ Bike'}</Text>
+              <Text style={[styles.cardRowLabel, { color: theme.textLight }]}>Vehicle Type</Text>
+              <Text style={[styles.cardRowValue, { color: theme.text }]}>{vehicleType === 'car' ? '🚗 Car' : '🏍️ Bike'}</Text>
             </View>
           </View>
 
-          <View style={styles.cardDivider} />
+          <View style={[styles.cardDivider, { backgroundColor: theme.border }]} />
 
           <View style={styles.cardRow}>
-            <View style={styles.cardIconWrap}>
-              <Ionicons name="time-outline" size={18} color={COLORS.olive} />
+            <View style={[styles.cardIconWrap, { backgroundColor: isDarkMode ? '#3D3D3D' : COLORS.badgeBg }]}>
+              <Ionicons name="time-outline" size={18} color={isDarkMode ? '#FBD427' : COLORS.olive} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.cardRowLabel}>Slot</Text>
-              <Text style={styles.cardRowValue}>
+              <Text style={[styles.cardRowLabel, { color: theme.textLight }]}>Slot</Text>
+              <Text style={[styles.cardRowValue, { color: theme.text }]}>
                 {startDate.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}
                 {' → '}
                 {endDate.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}
               </Text>
-              <Text style={styles.cardRowSub}>{durationHours} hr{durationHours !== 1 ? 's' : ''} · {startDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</Text>
+              <Text style={[styles.cardRowSub, { color: theme.textLight }]}>{durationHours} hr{durationHours !== 1 ? 's' : ''} · {startDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</Text>
             </View>
           </View>
         </View>
 
         {/* Fare Breakdown */}
-        <View style={styles.fareCard}>
-          <Text style={styles.cardTitle}>Price Details</Text>
+        <View style={[styles.fareCard, { backgroundColor: theme.surface }]}>
+          <Text style={[styles.cardTitle, { color: isDarkMode ? '#FFF' : COLORS.oliveDark }]}>Price Details</Text>
           <View style={styles.fareRow}>
-            <Text style={styles.fareLabel}>Parking Rate</Text>
-            <Text style={styles.fareValue}>₹{parking.pricePerHour}/hr</Text>
+            <Text style={[styles.fareLabel, { color: theme.textLight }]}>Parking Rate</Text>
+            <Text style={[styles.fareValue, { color: theme.text }]}>₹{parking.pricePerHour}/hr</Text>
           </View>
           <View style={styles.fareRow}>
-            <Text style={styles.fareLabel}>Duration</Text>
-            <Text style={styles.fareValue}>{durationHours} hr{durationHours !== 1 ? 's' : ''}</Text>
+            <Text style={[styles.fareLabel, { color: theme.textLight }]}>Duration</Text>
+            <Text style={[styles.fareValue, { color: theme.text }]}>{durationHours} hr{durationHours !== 1 ? 's' : ''}</Text>
           </View>
           <View style={styles.fareRow}>
-            <Text style={styles.fareLabel}>Platform Fee</Text>
+            <Text style={[styles.fareLabel, { color: theme.textLight }]}>Platform Fee</Text>
             <Text style={[styles.fareValue, { color: '#2E7D32' }]}>FREE</Text>
           </View>
-          <View style={styles.fareDivider} />
+          <View style={[styles.fareDivider, { backgroundColor: theme.border }]} />
           <View style={styles.fareRow}>
-            <Text style={styles.fareTotalLabel}>Total Payable</Text>
-            <Text style={styles.fareTotalValue}>₹{totalAmount}</Text>
+            <Text style={[styles.fareTotalLabel, { color: isDarkMode ? '#FFF' : COLORS.oliveDark }]}>Total Payable</Text>
+            <Text style={[styles.fareTotalValue, { color: isDarkMode ? '#FBD427' : COLORS.olive }]}>₹{totalAmount}</Text>
           </View>
         </View>
 
         {/* Payment Methods Info */}
-        <View style={styles.methodsCard}>
-          <Text style={styles.cardTitle}>Payment Methods</Text>
+        <View style={[styles.methodsCard, { backgroundColor: theme.surface }]}>
+          <Text style={[styles.cardTitle, { color: isDarkMode ? '#FFF' : COLORS.oliveDark }]}>Payment Methods</Text>
           <View style={styles.methodsGrid}>
             {['UPI', 'Cards', 'Net Banking', 'Wallets'].map((m) => (
-              <View key={m} style={styles.methodChip}>
-                <Text style={styles.methodChipText}>{m}</Text>
+              <View key={m} style={[styles.methodChip, { backgroundColor: isDarkMode ? '#3D3D3D' : COLORS.badgeBg, borderColor: isDarkMode ? '#555' : '#E5DFA0' }]}>
+                <Text style={[styles.methodChipText, { color: isDarkMode ? '#FFF' : COLORS.olive }]}>{m}</Text>
               </View>
             ))}
           </View>
-          <Text style={styles.methodsNote}>Powered by Razorpay • PCI DSS Compliant</Text>
+          <Text style={[styles.methodsNote, { color: theme.textLight }]}>Powered by Razorpay • PCI DSS Compliant</Text>
         </View>
       </ScrollView>
 
       {/* Bottom CTA */}
-      <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 20) }]}>
+      <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 20), backgroundColor: theme.surface, borderTopColor: theme.border }]}>
         <View style={styles.footerLeft}>
-          <Text style={styles.footerLabel}>Amount to Pay</Text>
-          <Text style={styles.footerAmount}>₹{totalAmount}</Text>
+          <Text style={[styles.footerLabel, { color: theme.textLight }]}>Amount to Pay</Text>
+          <Text style={[styles.footerAmount, { color: isDarkMode ? '#FFF' : COLORS.oliveDark }]}>₹{totalAmount}</Text>
         </View>
         <TouchableOpacity
           style={[styles.payBtn, paymentLoading && { opacity: 0.7 }]}

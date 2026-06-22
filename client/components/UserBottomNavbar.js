@@ -3,9 +3,11 @@ import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS, SIZES, SHADOWS } from '../theme';
+import { useTheme } from '../context/ThemeContext';
 
 const UserBottomNavbar = ({ state, descriptors, navigation }) => {
   const insets = useSafeAreaInsets();
+  const { theme, isDarkMode } = useTheme();
   const focusedOptions = descriptors[state.routes[state.index].key].options;
 
   // If the currently focused screen should hide the tab bar (e.g. details)
@@ -15,7 +17,12 @@ const UserBottomNavbar = ({ state, descriptors, navigation }) => {
 
   return (
     <View style={styles.container}>
-      <View style={[styles.navBar, { paddingBottom: Math.max(insets.bottom, 12), height: 60 + Math.max(insets.bottom, 12) }]}>
+      <View style={[styles.navBar, { 
+        paddingBottom: Math.max(insets.bottom, 12), 
+        height: 60 + Math.max(insets.bottom, 12),
+        backgroundColor: theme.surface,
+        borderTopColor: theme.border
+      }]}>
         {state.routes.map((route, index) => {
           const { options } = descriptors[route.key];
           
@@ -85,10 +92,10 @@ const UserBottomNavbar = ({ state, descriptors, navigation }) => {
                 <Ionicons 
                   name={getIcon(route.name, isFocused)} 
                   size={22} 
-                  color={isFocused ? COLORS.oliveDark : COLORS.textLight} 
+                  color={isFocused ? (isDarkMode ? '#FFF' : COLORS.oliveDark) : theme.textLight} 
                 />
               </View>
-              <Text style={[styles.label, { color: isFocused ? COLORS.oliveDark : COLORS.textLight, fontWeight: isFocused ? '700' : '500' }]}>
+              <Text style={[styles.label, { color: isFocused ? (isDarkMode ? '#FFF' : COLORS.oliveDark) : theme.textLight, fontWeight: isFocused ? '700' : '500' }]}>
                 {label}
               </Text>
               {/* {isFocused && <View style={styles.activeIndicator} />} */}

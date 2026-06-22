@@ -1,5 +1,5 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { COLORS, SHADOWS } from '../../theme';
+import bookingService from '../../services/bookingService';
 
 const VEHICLE_TYPES = [
   { key: 'car', label: 'Car', icon: 'car-sport-outline', description: 'Spacious slots for cars' },
@@ -41,6 +42,25 @@ export default function SlotSelectionScreen() {
       slotType: 'Regular',
     }));
   }, [parking, selectedType]);
+
+  const [bookedSpots, setBookedSpots] = useState([]);
+
+  useEffect(() => {
+    if (!parking) return;
+    const fetchBookedSpots = async () => {
+      try {
+        const startDate = new Date(params?.startDate || new Date());
+        const durationHours = parseInt(params?.selectedDuration || '1', 10);
+        const endDate = new Date(startDate.getTime() + durationHours * 60 * 60 * 1000);
+        
+        const res = await bookingService.getBookedSpots(parking._id, startDate.toISOString(), endDate.toISOString());
+        setBookedSpots(res.bookedSpots || []);
+      } catch (error) {
+        console.error("Error fetching booked spots", error);
+      }
+    };
+    fetchBookedSpots();
+  }, [parking, params?.startDate, params?.selectedDuration]);
 
   if (!parking) {
     return (
@@ -91,7 +111,7 @@ export default function SlotSelectionScreen() {
                 setSelectedSlot(null);
               }}
             >
-              <View style={styles.typeIconWrap}>
+              <View style={[styles.typeIconWrap, selectedType === type.key && styles.typeIconWrapActive]}>
                 <Ionicons
                   name={type.icon}
                   size={32}
@@ -111,33 +131,40 @@ export default function SlotSelectionScreen() {
 
         <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Available Slots</Text>
         <View style={styles.slotGrid}>
-          {availableSlots.map((slot, index) => (
+          {availableSlots.map((slot, index) => {
+            const isBooked = bookedSpots.includes(slot.spotName);
+            return (
             <TouchableOpacity
               key={`${slot.spotName}-${index}`}
               style={[
                 styles.slotCard,
                 selectedSlot === slot.spotName && styles.slotCardActive,
+                isBooked && styles.slotCardBooked,
               ]}
+              disabled={isBooked}
               onPress={() => setSelectedSlot(slot.spotName)}
             >
-              <View style={styles.slotIconWrap}>
+              <View style={[styles.slotIconWrap, isBooked && styles.slotIconWrapBooked]}>
                 <Ionicons
                   name={selectedType === 'car' ? 'car' : 'bicycle'}
                   size={18}
-                  color={selectedSlot === slot.spotName ? '#FFF' : COLORS.oliveDark}
+                  color={selectedSlot === slot.spotName ? '#FFF' : (isBooked ? '#999' : COLORS.oliveDark)}
                 />
               </View>
-              <Text style={[styles.slotName, selectedSlot === slot.spotName && styles.slotNameActive]}>{slot.spotName}</Text>
-              <Text style={styles.slotType}>{slot.slotType ? slot.slotType : selectedType === 'car' ? 'Car Slot' : 'Bike Slot'}</Text>
+              <Text style={[styles.slotName, selectedSlot === slot.spotName && styles.slotNameActive, isBooked && styles.slotNameBooked]}>{slot.spotName}</Text>
+              <Text style={[styles.slotType, isBooked && { color: '#999' }]}>
+                 {isBooked ? 'Booked' : (slot.slotType ? slot.slotType : selectedType === 'car' ? 'Car Slot' : 'Bike Slot')}
+              </Text>
             </TouchableOpacity>
-          ))}
+            );
+          })}
         </View>
       </ScrollView>
 
-      <View style={styles.footer}>
+      <View style={[styles.footer, { backgroundColor: theme.surface, borderTopColor: theme.border }]}>
         <View>
-          <Text style={styles.footerLabel}>Selected slot</Text>
-          <Text style={styles.footerValue}>{selectedSlot || 'Pick a slot to continue'}</Text>
+          <Text style={[styles.footerLabel, { color: theme.textLight }]}>Selected slot</Text>
+          <Text style={[styles.footerValue, { color: theme.text }]}>{selectedSlot || 'Pick a slot to continue'}</Text>
         </View>
         <TouchableOpacity
           style={[styles.confirmButton, !selectedSlot && styles.confirmButtonDisabled]}
@@ -195,6 +222,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 14,
   },
+  typeIconWrapActive: { backgroundColor: 'rgba(255,255,255,0.2)' },
   typeLabel: { fontSize: 14, fontWeight: '700', color: '#333' },
   typeLabelActive: { color: '#FFF' },
   typeDescription: { fontSize: 12, color: '#777', textAlign: 'center', marginTop: 5 },
@@ -219,6 +247,7 @@ const styles = StyleSheet.create({
     ...SHADOWS.light,
   },
   slotCardActive: { backgroundColor: COLORS.oliveDark, borderColor: COLORS.oliveDark },
+  slotCardBooked: { backgroundColor: '#F5F5F5', borderColor: '#EEE', opacity: 0.7 },
   slotIconWrap: {
     width: 32,
     height: 32,
@@ -228,8 +257,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 12,
   },
+  slotIconWrapBooked: { backgroundColor: '#E0E0E0' },
   slotName: { fontSize: 14, fontWeight: '700', color: '#333' },
   slotNameActive: { color: '#FFF' },
+  slotNameBooked: { color: '#999', textDecorationLine: 'line-through' },
   slotType: { fontSize: 11, color: '#777', marginTop: 6 },
   footer: {
     position: 'absolute',

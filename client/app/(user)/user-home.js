@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SIZES, SHADOWS } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
 import FilterModal from '../../components/FilterModal';
 import { useRouter } from 'expo-router';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
@@ -25,6 +26,7 @@ const LOC_CITY_KEY       = 'lastKnownCity';
 const LOC_COORDS_KEY     = 'lastKnownCoords';
 
 export default function UserHomeScreen() {
+  const { theme, isDarkMode } = useTheme();
   const [filterVisible, setFilterVisible] = useState(false);
   const [userLocation, setUserLocation] = useState(null);
   const [cityName, setCityName] = useState('Locating…');
@@ -295,43 +297,43 @@ export default function UserHomeScreen() {
         ))}
       </MapView>
 
-      {/* Light overlay */}
-      <View style={styles.mapOverlay} pointerEvents="none" />
+      {/* Theme overlay on map */}
+      <View style={[styles.mapOverlay, { backgroundColor: isDarkMode ? 'rgba(0,0,0,0.5)' : 'rgba(255,255,255,0.18)' }]} pointerEvents="none" />
 
       <SafeAreaView style={styles.safeArea} pointerEvents="box-none">
         {/* Top Header */}
         <View style={styles.header}>
           <View style={styles.locationRow}>
-            <View style={styles.locationIconWrapper}>
-              <Ionicons name="location" size={18} color="#A08A38" />
+            <View style={[styles.locationIconWrapper, { backgroundColor: isDarkMode ? '#3D3D3D' : COLORS.badgeBg }]}>
+              <Ionicons name="location" size={18} color={isDarkMode ? '#FBD427' : '#A08A38'} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.locationLabel}>Your location</Text>
-              <Text style={styles.locationText} numberOfLines={1}>{cityName}</Text>
+              <Text style={[styles.locationLabel, { color: theme.textLight }]}>Your location</Text>
+              <Text style={[styles.locationText, { color: theme.text }]} numberOfLines={1}>{cityName}</Text>
             </View>
-            <TouchableOpacity style={styles.bellIcon}>
-              <Ionicons name="notifications-outline" size={24} color={COLORS.text} />
+            <TouchableOpacity style={[styles.bellIcon, { backgroundColor: theme.surface }]} onPress={() => navigation.push('/(user)/settings')}>
+              <Ionicons name="settings-outline" size={24} color={theme.text} />
             </TouchableOpacity>
           </View>
 
           {/* Search Bar */}
-          <View style={styles.searchContainer}>
+          <View style={[styles.searchContainer, { backgroundColor: theme.surface, borderColor: theme.border }]}>
             <TouchableOpacity
               style={styles.searchInputMock}
               onPress={() => navigation.push('/search')}
               activeOpacity={0.8}
             >
-              <Ionicons name="search" size={20} color={COLORS.oliveDark} style={{ marginRight: 10 }} />
-              <Text style={{ color: COLORS.textLight, flex: 1, fontSize: SIZES.medium }}>
+              <Ionicons name="search" size={20} color={isDarkMode ? '#FFF' : COLORS.oliveDark} style={{ marginRight: 10 }} />
+              <Text style={{ color: theme.textLight, flex: 1, fontSize: SIZES.medium }}>
                 Search for parking
               </Text>
             </TouchableOpacity>
             {/* Filter button with active badge */}
-            <TouchableOpacity style={styles.filterIcon} onPress={() => setFilterVisible(true)}>
+            <TouchableOpacity style={[styles.filterIcon, { borderLeftColor: theme.border }]} onPress={() => setFilterVisible(true)}>
               <Ionicons
                 name="options-outline"
                 size={22}
-                color={activeFilterCount > 0 ? COLORS.oliveDark : COLORS.oliveDark}
+                color={isDarkMode ? '#FFF' : COLORS.oliveDark}
               />
               {activeFilterCount > 0 && (
                 <View style={styles.filterBadge}>
@@ -355,8 +357,8 @@ export default function UserHomeScreen() {
 
         {/* Recenter-to-user FAB */}
         {userLocation && (
-          <TouchableOpacity style={styles.myLocationBtn} onPress={handleCenterOnUser}>
-            <Ionicons name="locate" size={22} color={COLORS.oliveDark} />
+          <TouchableOpacity style={[styles.myLocationBtn, { backgroundColor: theme.surface }]} onPress={handleCenterOnUser}>
+            <Ionicons name="locate" size={22} color={isDarkMode ? '#FFF' : COLORS.oliveDark} />
           </TouchableOpacity>
         )}
 
@@ -364,7 +366,7 @@ export default function UserHomeScreen() {
         {selectedParking && (
           <View style={styles.bottomCardContainer}>
             <TouchableOpacity
-              style={styles.parkingCard}
+              style={[styles.parkingCard, { backgroundColor: theme.surface }]}
               activeOpacity={0.9}
               onPress={() =>
                 navigation.push({ pathname: '/parking-details', params: { parking: JSON.stringify(selectedParking) } })
@@ -379,23 +381,23 @@ export default function UserHomeScreen() {
               />
               <View style={styles.cardHeader}>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.cardTitle} numberOfLines={1}>{selectedParking.name}</Text>
-                  <Text style={styles.cardAddress} numberOfLines={1}>{selectedParking.address}</Text>
+                  <Text style={[styles.cardTitle, { color: theme.text }]} numberOfLines={1}>{selectedParking.name}</Text>
+                  <Text style={[styles.cardAddress, { color: theme.textLight }]} numberOfLines={1}>{selectedParking.address}</Text>
                 </View>
                 <View style={styles.ratingBadge}>
                   <Ionicons name="star" size={16} color={COLORS.primary} />
-                  <Text style={styles.ratingText}>4.5</Text>
+                  <Text style={[styles.ratingText, { color: theme.text }]}>4.5</Text>
                 </View>
               </View>
 
               <View style={styles.cardBottom}>
                 <View>
-                  <Text style={styles.priceText}>
-                    ₹{selectedParking.pricePerHour}<Text style={styles.priceUnit}>/hr</Text>
+                  <Text style={[styles.priceText, { color: isDarkMode ? '#FBD427' : COLORS.olive }]}>
+                    ₹{selectedParking.pricePerHour}<Text style={[styles.priceUnit, { color: theme.textLight }]}>/hr</Text>
                   </Text>
-                  <Text style={styles.availabilityText}>{selectedParking.availableSlots} spots left</Text>
+                  <Text style={[styles.availabilityText, { color: theme.textLight }]}>{selectedParking.availableSlots} spots left</Text>
                   {selectedParking.distanceText && (
-                    <Text style={[styles.availabilityText, { marginTop: 4 }]}>{selectedParking.distanceText}</Text>
+                    <Text style={[styles.availabilityText, { color: theme.textLight, marginTop: 4 }]}>{selectedParking.distanceText}</Text>
                   )}
                 </View>
                 <View style={styles.actions}>
@@ -426,12 +428,12 @@ export default function UserHomeScreen() {
 
             {/* Previous card button */}
             <TouchableOpacity style={styles.prevCardBtn} onPress={handlePrevCard}>
-              <Ionicons name="chevron-back" size={24} color={COLORS.surface} />
+              <Ionicons name="chevron-back" size={24} color="#333" />
             </TouchableOpacity>
 
             {/* Next card button */}
             <TouchableOpacity style={styles.nextCardBtn} onPress={handleNextCard}>
-              <Ionicons name="chevron-forward" size={24} color={COLORS.surface} />
+              <Ionicons name="chevron-forward" size={24} color="#333" />
             </TouchableOpacity>
           </View>
         )}

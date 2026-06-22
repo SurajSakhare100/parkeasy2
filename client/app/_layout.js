@@ -3,6 +3,7 @@ import { Stack, useRouter, useSegments, useRootNavigationState } from 'expo-rout
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { View, ActivityIndicator, DeviceEventEmitter } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { ThemeProvider } from '../context/ThemeContext';
 
 export default function RootLayout() {
   const [isLoading, setIsLoading] = useState(true);
@@ -40,21 +41,15 @@ export default function RootLayout() {
     if (!navigationState?.key) return; // Navigation not ready yet — wait for it
 
     const inAuthGroup = segments[0] === '(auth)';
-    const inUserGroup = segments[0] === '(user)';
-    const inOwnerGroup = segments[0] === '(owner)';
 
     if (!hasToken && !inAuthGroup) {
+      // If not logged in and not in auth group, redirect to login
       router.replace('/(auth)/login');
-    } else if (hasToken) {
+    } else if (hasToken && inAuthGroup) {
+      // If logged in but trying to access auth group (e.g. login/register), redirect to home
       if (userRole === 'owner') {
-        if (inUserGroup || inAuthGroup) {
-          router.replace('/(owner)/home');
-        }
-      } else if (userRole === 'customer') {
-        if (inOwnerGroup || inAuthGroup) {
-          router.replace('/(user)/user-home');
-        }
-      } else if (inAuthGroup) {
+        router.replace('/(owner)/home');
+      } else {
         router.replace('/(user)/user-home');
       }
     }
@@ -89,13 +84,15 @@ export default function RootLayout() {
   }
 
   return (
-    <SafeAreaProvider>
-      <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="index" options={{ headerShown: false }} />
-        <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-        <Stack.Screen name="(user)" options={{ headerShown: false }} />
-        <Stack.Screen name="(owner)" options={{ headerShown: false }} />
-      </Stack>
-    </SafeAreaProvider>
+    <ThemeProvider>
+      <SafeAreaProvider>
+        <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="index" options={{ headerShown: false }} />
+          <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+          <Stack.Screen name="(user)" options={{ headerShown: false }} />
+          <Stack.Screen name="(owner)" options={{ headerShown: false }} />
+        </Stack>
+      </SafeAreaProvider>
+    </ThemeProvider>
   );
 }

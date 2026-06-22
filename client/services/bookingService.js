@@ -4,8 +4,16 @@ const bookingService = {
   /**
    * Create a new booking (returns bookingId + totalAmount)
    */
-  createBooking: async ({ parkingId, vehicleType, startTime, endTime, spotName }) => {
-    const res = await api.post('/booking/create', { parkingId, vehicleType, startTime, endTime, spotName });
+  createBooking: async ({ parkingId, vehicleType, vehicleNumber, startTime, endTime, spotName }) => {
+    const res = await api.post('/booking/create', { parkingId, vehicleType, vehicleNumber, startTime, endTime, spotName });
+    return res.data;
+  },
+
+  /**
+   * Get booked spots for a specific parking location and time range
+   */
+  getBookedSpots: async (parkingId, startTime, endTime) => {
+    const res = await api.get(`/booking/booked-spots?parkingId=${parkingId}&startTime=${startTime}&endTime=${endTime}`);
     return res.data;
   },
 

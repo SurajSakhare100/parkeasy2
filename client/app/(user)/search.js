@@ -8,9 +8,11 @@ import { COLORS, SIZES, SHADOWS } from '../../theme';
 import parkingService from '../../services/parkingService';
 import userService from '../../services/userService';
 import FilterModal from '../../components/FilterModal';
+import { useTheme } from '../../context/ThemeContext';
 
 export default function SearchScreen() {
   const router = useRouter();
+  const { theme, isDarkMode } = useTheme();
   const { initialFilters } = useLocalSearchParams();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -102,28 +104,28 @@ export default function SearchScreen() {
 
     return (
       <TouchableOpacity
-        style={styles.recommendationCard}
+        style={[styles.recommendationCard, { backgroundColor: isDarkMode ? theme.surface : '#FFF9E8', borderColor: theme.border }]}
         activeOpacity={0.85}
         onPress={() => router.push({ pathname: '/parking-details', params: { parking: JSON.stringify(recommendedParking) } })}
       >
         <View style={styles.recommendationLabelRow}>
-          <Text style={styles.recommendationBadge}>Recommended</Text>
-          <Text style={styles.recommendationScore}>{Math.round((recommendedParking.recommendationScore ?? 0) * 100)}%</Text>
+          <Text style={[styles.recommendationBadge, { color: isDarkMode ? '#FFF' : COLORS.oliveDark, backgroundColor: isDarkMode ? '#4D4D4D' : '#FFF4D1' }]}>Recommended</Text>
+          <Text style={[styles.recommendationScore, { color: isDarkMode ? '#FBD427' : '#8A6B00' }]}>{Math.round((recommendedParking.recommendationScore ?? 0) * 100)}%</Text>
         </View>
-        <Text style={styles.recommendationTitle}>{recommendedParking.name}</Text>
-        <Text style={styles.recommendationSubtitle}>{recommendedParking.address || recommendedParking.locationText || 'Best match for you'}</Text>
+        <Text style={[styles.recommendationTitle, { color: theme.text }]}>{recommendedParking.name}</Text>
+        <Text style={[styles.recommendationSubtitle, { color: theme.textLight }]}>{recommendedParking.address || recommendedParking.locationText || 'Best match for you'}</Text>
         <View style={styles.recommendationMetaRow}>
-          <Text style={styles.recommendationMeta}>{recommendedParking.availableSlots ?? 0} slots</Text>
-          <Text style={styles.recommendationMeta}>₹{recommendedParking.pricePerHour ?? '—'}/hr</Text>
-          <Text style={styles.recommendationMeta}>{recommendedParking.distanceText ?? ''}</Text>
+          <Text style={[styles.recommendationMeta, { color: isDarkMode ? theme.textLight : '#7A6D4B' }]}>{recommendedParking.availableSlots ?? 0} slots</Text>
+          <Text style={[styles.recommendationMeta, { color: isDarkMode ? theme.textLight : '#7A6D4B' }]}>₹{recommendedParking.pricePerHour ?? '—'}/hr</Text>
+          <Text style={[styles.recommendationMeta, { color: isDarkMode ? theme.textLight : '#7A6D4B' }]}>{recommendedParking.distanceText ?? ''}</Text>
           {recommendedParking.rating != null && (
-            <Text style={styles.recommendationMeta}>{recommendedParking.rating.toFixed(1)}★</Text>
+            <Text style={[styles.recommendationMeta, { color: isDarkMode ? theme.textLight : '#7A6D4B' }]}>{recommendedParking.rating.toFixed(1)}★</Text>
           )}
         </View>
         <View style={styles.reasonRow}>
           {reasons.map((reason) => (
-            <View key={reason} style={styles.reasonChip}>
-              <Text style={styles.reasonText}>{reason}</Text>
+            <View key={reason} style={[styles.reasonChip, { backgroundColor: isDarkMode ? '#4D4D4D' : '#F0E4C6' }]}>
+              <Text style={[styles.reasonText, { color: isDarkMode ? '#FFF' : '#6A5C3C' }]}>{reason}</Text>
             </View>
           ))}
         </View>
@@ -208,12 +210,12 @@ export default function SearchScreen() {
       activeOpacity={0.7}
       onPress={() => router.push({ pathname: '/parking-details', params: { parking: JSON.stringify(item) } })}
     >
-      <View style={styles.iconContainer}>
-        <Ionicons name="car" size={20} color={COLORS.oliveDark} />
+      <View style={[styles.iconContainer, { backgroundColor: isDarkMode ? '#3D3D3D' : COLORS.badgeBg }]}>
+        <Ionicons name="car" size={20} color={isDarkMode ? '#FBD427' : COLORS.oliveDark} />
       </View>
       <View style={styles.resultInfo}>
-        <Text style={styles.resultTitle}>{item.name}</Text>
-        <Text style={styles.resultAddress}>{item.address || item.locationText}</Text>
+        <Text style={[styles.resultTitle, { color: theme.text }]}>{item.name}</Text>
+        <Text style={[styles.resultAddress, { color: theme.textLight }]}>{item.address || item.locationText}</Text>
       </View>
       <View style={styles.resultStats}>
         <TouchableOpacity 
@@ -226,36 +228,36 @@ export default function SearchScreen() {
             color={COLORS.primary} 
           />
         </TouchableOpacity>
-        <Text style={styles.resultDistance}>₹{item.pricePerHour || '—'}/hr</Text>
-        <Text style={styles.resultDistance}>{item.distanceText ?? ''}</Text>
+        <Text style={[styles.resultDistance, { color: theme.textLight }]}>₹{item.pricePerHour || '—'}/hr</Text>
+        <Text style={[styles.resultDistance, { color: theme.textLight }]}>{item.distanceText ?? ''}</Text>
       </View>
     </TouchableOpacity>
   );
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.background }]}>
       <View style={styles.container}>
         {/* Header */}
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={24} color={COLORS.text} />
+          <Ionicons name="arrow-back" size={24} color={isDarkMode ? '#FFF' : COLORS.text} />
         </TouchableOpacity>
 
-        <Text style={styles.headerTitle}>Find Best Parking</Text>
-        <Text style={styles.subtext}>Enter your location to find them</Text>
+        <Text style={[styles.headerTitle, { color: theme.text }]}>Find Best Parking</Text>
+        <Text style={[styles.subtext, { color: theme.textLight }]}>Enter your location to find them</Text>
 
         {/* Search Bar */}
-        <View style={styles.searchBarContainer}>
-          <Ionicons name="search" size={20} color={COLORS.text} style={styles.searchIcon} />
+        <View style={[styles.searchBarContainer, { borderColor: isDarkMode ? theme.border : '#A08A38', backgroundColor: theme.surface }]}>
+          <Ionicons name="search" size={20} color={theme.text} style={styles.searchIcon} />
           <TextInput
-            style={styles.searchInput}
+            style={[styles.searchInput, { color: theme.text }]}
             value={searchQuery}
             onChangeText={setSearchQuery}
             placeholder="Search location..."
-            placeholderTextColor={COLORS.textLight}
+            placeholderTextColor={theme.textLight}
             autoFocus={true}
           />
-          <TouchableOpacity style={styles.filterBtn} onPress={() => setFilterVisible(true)}>
-            <Ionicons name="options-outline" size={20} color={activeFilterCount > 0 ? COLORS.oliveDark : COLORS.textLight} />
+          <TouchableOpacity style={[styles.filterBtn, { borderLeftColor: theme.border }]} onPress={() => setFilterVisible(true)}>
+            <Ionicons name="options-outline" size={20} color={activeFilterCount > 0 ? (isDarkMode ? '#FBD427' : COLORS.oliveDark) : theme.textLight} />
             {activeFilterCount > 0 && (
               <View style={styles.filterBadge}>
                 <Text style={styles.filterBadgeText}>{activeFilterCount}</Text>
@@ -270,19 +272,19 @@ export default function SearchScreen() {
         ) : searchQuery.trim() === '' && activeFilterCount === 0 ? (
           /* Search History */
           <View style={{ flex: 1 }}>
-            <Text style={styles.sectionTitle}>Recent Searches</Text>
+            <Text style={[styles.sectionTitle, { color: theme.text }]}>Recent Searches</Text>
             <FlatList
               data={history}
               keyExtractor={item => item._id}
               renderItem={({ item }) => (
-                <View style={styles.historyRow}>
+                <View style={[styles.historyRow, { borderBottomColor: theme.border }]}>
                   <TouchableOpacity 
                     style={styles.historyItem}
                     onPress={() => setSearchQuery(item.query)}
                     activeOpacity={0.7}
                   >
-                    <Ionicons name="time-outline" size={18} color="#AAA" />
-                    <Text style={styles.historyText}>{item.query}</Text>
+                    <Ionicons name="time-outline" size={18} color={theme.textLight} />
+                    <Text style={[styles.historyText, { color: theme.text }]}>{item.query}</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={styles.historyRemoveBtn}
@@ -294,7 +296,7 @@ export default function SearchScreen() {
                 </View>
               )}
               ListEmptyComponent={() => (
-                <Text style={styles.emptyText}>No recent searches</Text>
+                <Text style={[styles.emptyText, { color: theme.textLight }]}>No recent searches</Text>
               )}
             />
           </View>
@@ -305,9 +307,9 @@ export default function SearchScreen() {
             renderItem={renderItem}
             contentContainerStyle={styles.listContainer}
             ListHeaderComponent={renderRecommendation}
-            ItemSeparatorComponent={() => <View style={styles.separator} />}
+            ItemSeparatorComponent={() => <View style={[styles.separator, { backgroundColor: theme.border }]} />}
             ListEmptyComponent={() => (
-              <Text style={styles.emptyText}>
+              <Text style={[styles.emptyText, { color: theme.textLight }]}>
                 {searchQuery.trim() !== ''
                   ? `No parkings found for "${searchQuery}"`
                   : 'No parkings match the selected filters'}

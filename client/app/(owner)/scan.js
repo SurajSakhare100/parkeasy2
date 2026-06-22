@@ -268,7 +268,7 @@ export default function OwnerScanScreen() {
             </View>
             <View style={styles.gridItem}>
               <Text style={styles.gridLabel}>Vehicle</Text>
-              <Text style={styles.gridValue}>{booking.vehicleType === 'car' ? '🚗 Car' : '🏍️ Bike'}</Text>
+              <Text style={styles.gridValue}>{booking.vehicleType === 'car' ? '🚗' : '🏍️'} {booking.vehicleNumber || (booking.vehicleType === 'car' ? 'Car' : 'Bike')}</Text>
             </View>
             <View style={styles.gridItem}>
               <Text style={styles.gridLabel}>Amount</Text>

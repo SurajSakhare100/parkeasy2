@@ -2,20 +2,23 @@ import React from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SIZES } from '../theme';
+import { useTheme } from '../context/ThemeContext';
 
 export default function OwnerContactCard({ ownerName, ownerAvatar }) {
+  const { theme, isDarkMode } = useTheme();
+
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: isDarkMode ? theme.surface : '#F3EDCD', borderColor: theme.border, borderWidth: isDarkMode ? 1 : 0 }]}>
       <Image source={{ uri: ownerAvatar }} style={styles.avatar} />
       <View style={styles.info}>
-        <Text style={styles.name}>{ownerName}</Text>
-        <Text style={styles.role}>Owner</Text>
+        <Text style={[styles.name, { color: isDarkMode ? '#FFF' : '#4C4223' }]}>{ownerName}</Text>
+        <Text style={[styles.role, { color: theme.textLight }]}>Owner</Text>
       </View>
-      <TouchableOpacity style={styles.iconButton}>
-        <Ionicons name="call-outline" size={24} color={COLORS.oliveDark} />
+      <TouchableOpacity style={[styles.iconButton, { backgroundColor: isDarkMode ? '#3D3D3D' : '#FFF', borderColor: theme.border }]}>
+        <Ionicons name="call-outline" size={24} color={isDarkMode ? '#FFF' : COLORS.oliveDark} />
       </TouchableOpacity>
-      <TouchableOpacity style={styles.iconButton}>
-        <Ionicons name="chatbubble-ellipses-outline" size={24} color={COLORS.oliveDark} />
+      <TouchableOpacity style={[styles.iconButton, { backgroundColor: isDarkMode ? '#3D3D3D' : '#FFF', borderColor: theme.border }]}>
+        <Ionicons name="chatbubble-ellipses-outline" size={24} color={isDarkMode ? '#FFF' : COLORS.oliveDark} />
       </TouchableOpacity>
     </View>
   );

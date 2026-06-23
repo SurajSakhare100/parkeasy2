@@ -12,6 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { COLORS, SHADOWS } from '../../theme';
 import bookingService from '../../services/bookingService';
+import { useTheme } from '../../context/ThemeContext';
 
 const VEHICLE_TYPES = [
   { key: 'car', label: 'Car', icon: 'car-sport-outline', description: 'Spacious slots for cars' },
@@ -21,6 +22,7 @@ const VEHICLE_TYPES = [
 export default function SlotSelectionScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
+  const { theme, isDarkMode } = useTheme();
   const parking = useMemo(() => {
     if (!params?.parking) return null;
     return typeof params.parking === 'string' ? JSON.parse(params.parking) : params.parking;
@@ -87,75 +89,160 @@ export default function SlotSelectionScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={22} color={COLORS.oliveDark} />
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
+      <View style={[styles.header, { backgroundColor: theme.surface, borderBottomColor: theme.border }]}>
+        <TouchableOpacity
+          onPress={() => router.back()}
+          style={[styles.backBtn, { backgroundColor: isDarkMode ? '#3D3D3D' : '#F5F5F5' }]}
+        >
+          <Ionicons name="arrow-back" size={22} color={isDarkMode ? '#FFF' : COLORS.oliveDark} />
         </TouchableOpacity>
-        <Text style={styles.title}>Choose Your Slot</Text>
+        <Text style={[styles.title, { color: theme.text }]}>Choose Your Slot</Text>
         <View style={{ width: 40 }} />
       </View>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <Text style={styles.sectionTitle}>Vehicle Type</Text>
+        <Text style={[styles.sectionTitle, { color: theme.text }]}>Vehicle Type</Text>
         <View style={styles.typeRow}>
           {VEHICLE_TYPES.map((type) => (
             <TouchableOpacity
               key={type.key}
               style={[
                 styles.typeCard,
-                selectedType === type.key && styles.typeCardActive,
+                {
+                  backgroundColor: selectedType === type.key ? COLORS.oliveDark : theme.surface,
+                  borderColor: selectedType === type.key ? COLORS.oliveDark : theme.border,
+                },
               ]}
               onPress={() => {
                 setSelectedType(type.key);
                 setSelectedSlot(null);
               }}
             >
-              <View style={[styles.typeIconWrap, selectedType === type.key && styles.typeIconWrapActive]}>
+              <View
+                style={[
+                  styles.typeIconWrap,
+                  {
+                    backgroundColor: selectedType === type.key ? 'rgba(255,255,255,0.2)' : (isDarkMode ? '#3D3D3D' : '#F1F1F1'),
+                  },
+                ]}
+              >
                 <Ionicons
                   name={type.icon}
                   size={32}
-                  color={selectedType === type.key ? '#FFF' : COLORS.oliveDark}
+                  color={selectedType === type.key ? '#FFF' : (isDarkMode ? '#FBD427' : COLORS.oliveDark)}
                 />
               </View>
-              <Text style={[styles.typeLabel, selectedType === type.key && styles.typeLabelActive]}>{type.label}</Text>
-              <Text style={styles.typeDescription}>{type.description}</Text>
+              <Text
+                style={[
+                  styles.typeLabel,
+                  { color: selectedType === type.key ? '#FFF' : theme.text },
+                ]}
+              >
+                {type.label}
+              </Text>
+              <Text
+                style={[
+                  styles.typeDescription,
+                  { color: selectedType === type.key ? 'rgba(255,255,255,0.7)' : theme.textLight },
+                ]}
+              >
+                {type.description}
+              </Text>
             </TouchableOpacity>
           ))}
         </View>
 
-        <View style={styles.noteCard}>
-          <Text style={styles.noteTitle}>Slot type</Text>
-          <Text style={styles.noteText}>Each slot is optimized for the selected vehicle type. Pick a specific spot to reserve it.</Text>
+        <View style={[styles.noteCard, { backgroundColor: theme.surface, borderColor: theme.border, borderWidth: 1 }]}>
+          <Text style={[styles.noteTitle, { color: theme.text }]}>Slot type</Text>
+          <Text style={[styles.noteText, { color: theme.textLight }]}>
+            Each slot is optimized for the selected vehicle type. Pick a specific spot to reserve it.
+          </Text>
         </View>
 
-        <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Available Slots</Text>
+        <Text style={[styles.sectionTitle, { marginTop: 28, color: theme.text }]}>Available Slots</Text>
         <View style={styles.slotGrid}>
           {availableSlots.map((slot, index) => {
             const isBooked = bookedSpots.includes(slot.spotName);
+            const isSelected = selectedSlot === slot.spotName;
             return (
-            <TouchableOpacity
-              key={`${slot.spotName}-${index}`}
-              style={[
-                styles.slotCard,
-                selectedSlot === slot.spotName && styles.slotCardActive,
-                isBooked && styles.slotCardBooked,
-              ]}
-              disabled={isBooked}
-              onPress={() => setSelectedSlot(slot.spotName)}
-            >
-              <View style={[styles.slotIconWrap, isBooked && styles.slotIconWrapBooked]}>
-                <Ionicons
-                  name={selectedType === 'car' ? 'car' : 'bicycle'}
-                  size={18}
-                  color={selectedSlot === slot.spotName ? '#FFF' : (isBooked ? '#999' : COLORS.oliveDark)}
-                />
-              </View>
-              <Text style={[styles.slotName, selectedSlot === slot.spotName && styles.slotNameActive, isBooked && styles.slotNameBooked]}>{slot.spotName}</Text>
-              <Text style={[styles.slotType, isBooked && { color: '#999' }]}>
-                 {isBooked ? 'Booked' : (slot.slotType ? slot.slotType : selectedType === 'car' ? 'Car Slot' : 'Bike Slot')}
-              </Text>
-            </TouchableOpacity>
+              <TouchableOpacity
+                key={`${slot.spotName}-${index}`}
+                style={[
+                  styles.slotCard,
+                  {
+                    backgroundColor: isSelected
+                      ? COLORS.oliveDark
+                      : isBooked
+                      ? isDarkMode ? '#2A2A2A' : '#F5F5F5'
+                      : theme.surface,
+                    borderColor: isSelected
+                      ? COLORS.oliveDark
+                      : isBooked
+                      ? theme.border
+                      : theme.border,
+                    opacity: isBooked ? 0.6 : 1,
+                  },
+                ]}
+                disabled={isBooked}
+                onPress={() => setSelectedSlot(slot.spotName)}
+              >
+                <View
+                  style={[
+                    styles.slotIconWrap,
+                    {
+                      backgroundColor: isSelected
+                        ? 'rgba(255,255,255,0.2)'
+                        : isBooked
+                        ? isDarkMode ? '#1E1E1E' : '#E0E0E0'
+                        : isDarkMode ? '#3D3D3D' : '#F1F1F1',
+                    },
+                  ]}
+                >
+                  <Ionicons
+                    name={selectedType === 'car' ? 'car' : 'bicycle'}
+                    size={18}
+                    color={
+                      isSelected
+                        ? '#FFF'
+                        : isBooked
+                        ? '#999'
+                        : isDarkMode ? '#FBD427' : COLORS.oliveDark
+                    }
+                  />
+                </View>
+                <Text
+                  style={[
+                    styles.slotName,
+                    {
+                      color: isSelected ? '#FFF' : isBooked ? '#999' : theme.text,
+                      textDecorationLine: isBooked ? 'line-through' : 'none',
+                    },
+                  ]}
+                >
+                  {slot.spotName}
+                </Text>
+                <Text
+                  style={[
+                    styles.slotType,
+                    {
+                      color: isSelected
+                        ? 'rgba(255,255,255,0.7)'
+                        : isBooked
+                        ? '#999'
+                        : theme.textLight,
+                    },
+                  ]}
+                >
+                  {isBooked
+                    ? 'Booked'
+                    : slot.slotType
+                    ? slot.slotType
+                    : selectedType === 'car'
+                    ? 'Car Slot'
+                    : 'Bike Slot'}
+                </Text>
+              </TouchableOpacity>
             );
           })}
         </View>
@@ -164,7 +251,9 @@ export default function SlotSelectionScreen() {
       <View style={[styles.footer, { backgroundColor: theme.surface, borderTopColor: theme.border }]}>
         <View>
           <Text style={[styles.footerLabel, { color: theme.textLight }]}>Selected slot</Text>
-          <Text style={[styles.footerValue, { color: theme.text }]}>{selectedSlot || 'Pick a slot to continue'}</Text>
+          <Text style={[styles.footerValue, { color: theme.text }]}>
+            {selectedSlot || 'Pick a slot to continue'}
+          </Text>
         </View>
         <TouchableOpacity
           style={[styles.confirmButton, !selectedSlot && styles.confirmButtonDisabled]}

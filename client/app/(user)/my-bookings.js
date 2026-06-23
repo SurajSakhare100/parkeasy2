@@ -145,7 +145,7 @@ export default function MyBookingsScreen() {
                       {formatSlot(item.startTime, item.endTime)}
                     </Text>
                     <Text style={[styles.vehicleText, { color: theme.textLight }]} numberOfLines={1}>
-                      {item.vehicleType === 'car' ? '🚗' : '🏍️'} {item.vehicleNumber}
+                      {item.vehicleType === 'car' ? '🚗' : '🏍️'} {item.vehicleNumber || '—'} {item.bookingId ? ` · ID: ${item.bookingId}` : ''}
                     </Text>
                     <View style={styles.priceRow}>
                       <Text style={[styles.price, { color: isDarkMode ? '#FBD427' : COLORS.olive }]}>
@@ -164,30 +164,33 @@ export default function MyBookingsScreen() {
                 <View style={[styles.divider, { backgroundColor: theme.border }]} />
 
                 <View style={styles.actionRow}>
-                  <TouchableOpacity
-                    style={styles.btnOutline}
-                    onPress={() => navigation.push({
-                      pathname: '/ticket',
-                      params: {
-                        booking: JSON.stringify({
-                          id: item._id,
-                          parkingName: parking?.name,
-                          address: parking?.address,
-                          vehicleType: item.vehicleType,
-                          vehicleNumber: item.vehicleNumber,
-                          startTime: item.startTime,
-                          endTime: item.endTime,
-                          totalAmount: item.totalAmount,
-                          qrCode: item.qrCode,
-                          qrCodeImage: item.qrCodeImage,
-                          status: item.status,
-                        })
-                      }
-                    })}
-                  >
-                    <Ionicons name="qr-code-outline" size={15} color={COLORS.olive} style={{ marginRight: 5 }} />
-                    <Text style={styles.btnOutlineText}>View Ticket</Text>
-                  </TouchableOpacity>
+                  {['booked', 'active', 'completed'].includes(item.status) && (
+                    <TouchableOpacity
+                      style={styles.btnOutline}
+                      onPress={() => navigation.push({
+                        pathname: '/ticket',
+                        params: {
+                          booking: JSON.stringify({
+                            id: item._id,
+                            bookingId: item.bookingId,
+                            parkingName: parking?.name,
+                            address: parking?.address,
+                            vehicleType: item.vehicleType,
+                            vehicleNumber: item.vehicleNumber,
+                            startTime: item.startTime,
+                            endTime: item.endTime,
+                            totalAmount: item.totalAmount,
+                            qrCode: item.qrCode,
+                            qrCodeImage: item.qrCodeImage,
+                            status: item.status,
+                          })
+                        }
+                      })}
+                    >
+                      <Ionicons name="qr-code-outline" size={15} color={COLORS.olive} style={{ marginRight: 5 }} />
+                      <Text style={styles.btnOutlineText}>View Ticket</Text>
+                    </TouchableOpacity>
+                  )}
 
                   {activeTab === 'ACTIVE' ? (
                     <TouchableOpacity

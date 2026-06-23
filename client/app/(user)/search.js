@@ -17,7 +17,6 @@ export default function SearchScreen() {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [results, setResults] = useState([]);
-  const [recommendedParking, setRecommendedParking] = useState(null);
   const [history, setHistory] = useState([]);
   const [savedParkingIds, setSavedParkingIds] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -89,50 +88,8 @@ export default function SearchScreen() {
     }
   };
 
-  const getRecommendationReasons = (parking) => {
-    const reasons = [];
-    if ((parking.availableSlots ?? 0) >= 5) reasons.push('High availability');
-    if ((parking.pricePerHour ?? 0) <= 120) reasons.push('Good price');
-    if ((parking.rating ?? 0) >= 4.5) reasons.push('Top rated');
-    if (reasons.length === 0) reasons.push('Best overall match');
-    return reasons.slice(0, 3);
-  };
-
-  const renderRecommendation = () => {
-    if (!recommendedParking) return null;
-    const reasons = getRecommendationReasons(recommendedParking);
-
-    return (
-      <TouchableOpacity
-        style={[styles.recommendationCard, { backgroundColor: isDarkMode ? theme.surface : '#FFF9E8', borderColor: theme.border }]}
-        activeOpacity={0.85}
-        onPress={() => router.push({ pathname: '/parking-details', params: { parking: JSON.stringify(recommendedParking) } })}
-      >
-        <View style={styles.recommendationLabelRow}>
-          <Text style={[styles.recommendationBadge, { color: isDarkMode ? '#FFF' : COLORS.oliveDark, backgroundColor: isDarkMode ? '#4D4D4D' : '#FFF4D1' }]}>Recommended</Text>
-          <Text style={[styles.recommendationScore, { color: isDarkMode ? '#FBD427' : '#8A6B00' }]}>{Math.round((recommendedParking.recommendationScore ?? 0) * 100)}%</Text>
-        </View>
-        <Text style={[styles.recommendationTitle, { color: theme.text }]}>{recommendedParking.name}</Text>
-        <Text style={[styles.recommendationSubtitle, { color: theme.textLight }]}>{recommendedParking.address || recommendedParking.locationText || 'Best match for you'}</Text>
-        <View style={styles.recommendationMetaRow}>
-          <Text style={[styles.recommendationMeta, { color: isDarkMode ? theme.textLight : '#7A6D4B' }]}>{recommendedParking.availableSlots ?? 0} slots</Text>
-          <Text style={[styles.recommendationMeta, { color: isDarkMode ? theme.textLight : '#7A6D4B' }]}>₹{recommendedParking.pricePerHour ?? '—'}/hr</Text>
-          <Text style={[styles.recommendationMeta, { color: isDarkMode ? theme.textLight : '#7A6D4B' }]}>{recommendedParking.distanceText ?? ''}</Text>
-          {recommendedParking.rating != null && (
-            <Text style={[styles.recommendationMeta, { color: isDarkMode ? theme.textLight : '#7A6D4B' }]}>{recommendedParking.rating.toFixed(1)}★</Text>
-          )}
-        </View>
-        <View style={styles.reasonRow}>
-          {reasons.map((reason) => (
-            <View key={reason} style={[styles.reasonChip, { backgroundColor: isDarkMode ? '#4D4D4D' : '#F0E4C6' }]}>
-              <Text style={[styles.reasonText, { color: isDarkMode ? '#FFF' : '#6A5C3C' }]}>{reason}</Text>
-            </View>
-          ))}
-        </View>
-      </TouchableOpacity>
-    );
-  };
-
+ 
+ 
   const saveSearch = async (query) => {
     if (!query.trim()) return;
     try {
@@ -180,15 +137,12 @@ export default function SearchScreen() {
       const lat = filters?.lat ?? filters?.latitude ?? userLocation?.latitude ?? null;
       const lng = filters?.lng ?? filters?.longitude ?? userLocation?.longitude ?? null;
 
-      const [searchData, recommendationData] = await Promise.all([
+      const [searchData] = await Promise.all([
         parkingService.searchParkings(query, { ...filters, lat, lng }),
-        parkingService.recommendParkings(query, { ...filters, lat, lng }),
       ]);
 
       setResults(searchData);
-      setRecommendedParking(
-        recommendationData?.recommendedParking ?? searchData?.[0] ?? null
-      );
+     
 
       if (searchData.length > 0) {
         saveSearch(query);
@@ -256,14 +210,14 @@ export default function SearchScreen() {
             placeholderTextColor={theme.textLight}
             autoFocus={true}
           />
-          <TouchableOpacity style={[styles.filterBtn, { borderLeftColor: theme.border }]} onPress={() => setFilterVisible(true)}>
+          {/* <TouchableOpacity style={[styles.filterBtn, { borderLeftColor: theme.border }]} onPress={() => setFilterVisible(true)}>
             <Ionicons name="options-outline" size={20} color={activeFilterCount > 0 ? (isDarkMode ? '#FBD427' : COLORS.oliveDark) : theme.textLight} />
             {activeFilterCount > 0 && (
               <View style={styles.filterBadge}>
                 <Text style={styles.filterBadgeText}>{activeFilterCount}</Text>
               </View>
             )}
-          </TouchableOpacity>
+          </TouchableOpacity> */}
         </View>
 
         {/* List */}
@@ -306,7 +260,7 @@ export default function SearchScreen() {
             keyExtractor={item => item._id}
             renderItem={renderItem}
             contentContainerStyle={styles.listContainer}
-            ListHeaderComponent={renderRecommendation}
+            // ListHeaderComponent={renderRecommendation}
             ItemSeparatorComponent={() => <View style={[styles.separator, { backgroundColor: theme.border }]} />}
             ListEmptyComponent={() => (
               <Text style={[styles.emptyText, { color: theme.textLight }]}>

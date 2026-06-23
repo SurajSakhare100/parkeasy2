@@ -29,7 +29,15 @@
     },
     "scheme": "parkeasy",
     "plugins": [
-      "expo-router"
+      "expo-router",
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "Allow ParkEasy to access your photos to save ticket images.",
+          "savePhotosPermission": "Allow ParkEasy to save ticket images to your gallery.",
+          "isAccessMediaLocationEnabled": false
+        }
+      ]
     ]
   }
 }

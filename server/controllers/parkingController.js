@@ -159,6 +159,7 @@ export const searchParkings = async (req, res) => {
 export const recommendParkings = async (req, res) => {
   try {
     const { q, sortBy, maxPrice, vehicleType, availableOnly } = req.query;
+
     const filter = { isActive: true };
 
     if (q && q.trim() !== "") {
@@ -185,188 +186,70 @@ export const recommendParkings = async (req, res) => {
     }
 
     let sortOption = {};
+
     if (sortBy === "price_asc") sortOption = { pricePerHour: 1 };
     if (sortBy === "price_desc") sortOption = { pricePerHour: -1 };
     if (sortBy === "slots") sortOption = { availableSlots: -1 };
 
-    // If user coordinates provided, use MongoDB $geoNear to compute distances server-side
     const userLat = parseFloat(req.query.lat);
     const userLng = parseFloat(req.query.lng);
-    const hasUserCoords = !Number.isNaN(userLat) && !Number.isNaN(userLng);
+    const hasUserCoords =
+      !Number.isNaN(userLat) && !Number.isNaN(userLng);
 
     let parkings;
+
     if (hasUserCoords) {
-      const agg = [
+      const pipeline = [
         {
           $geoNear: {
-            near: { type: "Point", coordinates: [userLng, userLat] },
-            distanceField: "dist.calculated",
+            near: {
+              type: "Point",
+              coordinates: [userLng, userLat],
+            },
+            distanceField: "distanceKm",
             spherical: true,
+            distanceMultiplier: 0.001,
             query: filter,
-            distanceMultiplier: 0.001 // return distance in kilometers
-          }
+          },
         },
       ];
 
-      if (Object.keys(sortOption).length) agg.push({ $sort: sortOption });
+      if (Object.keys(sortOption).length) {
+        pipeline.push({ $sort: sortOption });
+      }
 
-      // limit to a reasonable number to keep payload small
-      agg.push({ $limit: 200 });
+      pipeline.push({ $limit: 200 });
 
-      parkings = await Parking.aggregate(agg);
+      parkings = await Parking.aggregate(pipeline);
 
-      // normalize fields to match .lean() output and add distance fields
-      parkings = parkings.map(p => {
-        if (p.dist && typeof p.dist.calculated === 'number') {
-          p.distanceKm = Number(p.dist.calculated.toFixed(2));
-          p.distanceText = p.distanceKm < 1 ? '<1 km' : `${Math.round(p.distanceKm)} km away`;
-        }
-        return p;
-      });
+      parkings = parkings.map((parking) => ({
+        ...parking,
+        distanceKm: Number(parking.distanceKm.toFixed(2)),
+        distanceText:
+          parking.distanceKm < 1
+            ? "<1 km"
+            : `${Math.round(parking.distanceKm)} km away`,
+      }));
     } else {
       parkings = await Parking.find(filter).sort(sortOption).lean();
     }
-    const scriptPath = path.join(__dirname, "../scripts/recommend_parkings.py");
-    const payload = JSON.stringify({
+
+    res.status(200).json({
+      success: true,
+      count: parkings.length,
       parkings,
-      query: q,
-      filters: { sortBy, maxPrice, vehicleType, availableOnly },
     });
-
-    // Use spawn and stream stdin/stdout to avoid compatibility issues with execFile options
-    const { spawn } = await import('child_process');
-    const py = spawn(process.env.PYTHON_PATH || 'python3', [scriptPath]);
-
-    let stdout = '';
-    let stderr = '';
-
-    py.stdout.on('data', (chunk) => {
-      stdout += chunk.toString();
-    });
-
-    py.stderr.on('data', (chunk) => {
-      stderr += chunk.toString();
-    });
-
-    py.on('error', (err) => {
-      console.error('Recommend parking spawn error:', err);
-      return res.status(500).json({ message: 'Recommendation engine failed', error: err.message });
-    });
-
-    py.on('close', (code) => {
-      if (code !== 0) {
-        console.error('Recommend parking script exited with code', code, stderr);
-        return res.status(500).json({ message: 'Recommendation engine failed', error: stderr || `exit code ${code}` });
-      }
-
-      try {
-        const recommendationResult = JSON.parse(stdout);
-
-        // Attach distance information if user coordinates are provided
-        const userLat = parseFloat(req.query.lat);
-        const userLng = parseFloat(req.query.lng);
-        const hasUserCoords = !Number.isNaN(userLat) && !Number.isNaN(userLng);
-
-        if (Array.isArray(recommendationResult.parkings) && hasUserCoords) {
-          // Basic haversine fallback for all items first
-          recommendationResult.parkings = recommendationResult.parkings.map((p) => {
-            try {
-              const coords = p.location && p.location.coordinates;
-              if (Array.isArray(coords) && coords.length >= 2) {
-                const lon = Number(coords[0]);
-                const lat = Number(coords[1]);
-                if (!Number.isNaN(lat) && !Number.isNaN(lon)) {
-                  const d = haversineKm(userLat, userLng, lat, lon);
-                  p.distanceKm = Number(d.toFixed(2));
-                  p.distanceText = d < 1 ? '<1 km' : `${Math.round(d)} km away`;
-                }
-              }
-            } catch (e) {
-              // ignore per-item distance errors
-            }
-            return p;
-          });
-
-          // Try to enrich with Google Distance Matrix (driving distance) if key present
-          const apiKey = process.env.GOOGLE_MAPS_API_KEY;
-          if (apiKey && recommendationResult.parkings.length > 0) {
-            (async () => {
-              try {
-                // limit destinations to 25 to stay within common API limits
-                const maxDests = 25;
-                const dests = recommendationResult.parkings.slice(0, maxDests).map((p) => {
-                  const c = p.location && p.location.coordinates;
-                  return `${(c && c[1]) || ''},${(c && c[0]) || ''}`; // lat,lon
-                }).join('|');
-
-                const origin = `${userLat},${userLng}`;
-                const url = `https://maps.googleapis.com/maps/api/distancematrix/json?units=metric&origins=${encodeURIComponent(origin)}&destinations=${encodeURIComponent(dests)}&key=${encodeURIComponent(apiKey)}`;
-
-                const resp = await fetch(url);
-                if (!resp.ok) throw new Error(`Distance matrix HTTP ${resp.status}`);
-                const dm = await resp.json();
-                if (dm && dm.rows && dm.rows[0] && Array.isArray(dm.rows[0].elements)) {
-                  const elements = dm.rows[0].elements;
-                  for (let i = 0; i < elements.length; i++) {
-                    const el = elements[i];
-                    const p = recommendationResult.parkings[i];
-                    if (!p) continue;
-                    if (el && el.status === 'OK' && el.distance) {
-                      p.distanceKm = Number((el.distance.value / 1000).toFixed(2));
-                      p.distanceText = el.distance.text; // e.g. '13 km'
-                    }
-                  }
-
-                  // also update recommendedParking if it's within the first N
-                  if (recommendationResult.recommendedParking && recommendationResult.recommendedParking.location && recommendationResult.recommendedParking.location.coordinates) {
-                    const rc = recommendationResult.recommendedParking.location.coordinates;
-                    const rlat = Number(rc[1]);
-                    const rlon = Number(rc[0]);
-                    // find index in sliced array
-                    const idx = recommendationResult.parkings.findIndex(p => p._id === recommendationResult.recommendedParking._id);
-                    if (idx >= 0 && idx < elements.length) {
-                      const el = elements[idx];
-                      if (el && el.status === 'OK' && el.distance) {
-                        recommendationResult.recommendedParking.distanceKm = Number((el.distance.value / 1000).toFixed(2));
-                        recommendationResult.recommendedParking.distanceText = el.distance.text;
-                      }
-                    }
-                  }
-                }
-              } catch (e) {
-                console.warn('Google Distance Matrix enrichment failed:', e.message);
-                // keep haversine distances as fallback
-              }
-            })();
-          }
-        }
-
-        res.status(200).json(recommendationResult);
-      } catch (parseError) {
-        console.error('Recommendation parse error:', parseError, 'stdout:', stdout);
-        res.status(500).json({ message: 'Invalid recommendation response', error: parseError.message });
-      }
-    });
-
-    // send payload
-    try {
-      py.stdin.write(payload);
-      py.stdin.end();
-    } catch (e) {
-      console.error('Error writing to python stdin:', e);
-    }
   } catch (error) {
     console.error("Recommend parkings error:", error);
+
     res.status(500).json({
-      message: "Server Error while recommending parkings",
+      success: false,
+      message: "Server Error while fetching parkings",
       error: error.message,
     });
   }
 };
 
-/**
- * Get parkings for the logged in owner
- */
 export const getOwnerParkings = async (req, res) => {
   try {
     const ownerId = req.user.userId;
@@ -377,9 +260,7 @@ export const getOwnerParkings = async (req, res) => {
   }
 };
 
-/**
- * Update a parking spot
- */
+
 export const updateParking = async (req, res) => {
   try {
     const ownerId = req.user.userId;

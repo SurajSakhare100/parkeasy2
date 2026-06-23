@@ -133,7 +133,6 @@ export const login = async (req, res) => {
     // Generate Token
     const token = generateToken(user);
 
-    console.log(`User logged in: ${email}`);
     res.status(200).json({
       message: "Login successful",
       token,

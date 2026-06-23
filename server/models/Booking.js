@@ -10,6 +10,11 @@ const bookingSchema = new Schema(
       required: true,
       index: true,
     },
+    bookingId: {
+      type: String,
+      unique: true,
+      sparse: true,
+    },
     parkingId: {
       type: Schema.Types.ObjectId,
       ref: "Parking",
@@ -24,7 +29,7 @@ const bookingSchema = new Schema(
     },
     vehicleNumber: {
       type: String,
-      required: true,
+      required: false,
     },
     spotName: {
       type: String,
@@ -42,7 +47,7 @@ const bookingSchema = new Schema(
 
     status: {
       type: String,
-      enum: ["pending_payment", "booked", "active", "completed", "cancelled"],
+      enum: ["pending_payment", "booked", "active", "completed", "cancelled", "failed", "incomplete"],
       default: "pending_payment",
       index: true,
     },

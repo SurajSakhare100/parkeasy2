@@ -65,10 +65,12 @@ export default function OwnerScanScreen() {
       const token = parseToken(data);
       const res = await bookingService.scanByToken(token);
       setBooking(res);
-      if (res.status === 'active') {
+      if (res.transition === 'check_in') {
         Alert.alert('✅ Checked In', 'Booking marked as active. Entry time recorded.');
-      } else if (res.status === 'completed') {
+      } else if (res.transition === 'check_out') {
         Alert.alert('🏁 Checked Out', 'Booking completed. Exit time recorded.');
+      } else if (res.transition === 'already_completed') {
+        Alert.alert('ℹ️ Already Checked Out', 'This booking has already been checked out.');
       }
     } catch (err) {
       Alert.alert('Scan Failed', err.response?.data?.message || 'Could not find booking for this QR');
@@ -85,8 +87,13 @@ export default function OwnerScanScreen() {
       const token = parseToken(manualToken);
       const res = await bookingService.scanByToken(token);
       setBooking(res);
-      if (res.status === 'active') Alert.alert('✅ Checked In', 'Entry time recorded.');
-      else if (res.status === 'completed') Alert.alert('🏁 Checked Out', 'Exit time recorded.');
+      if (res.transition === 'check_in') {
+        Alert.alert('✅ Checked In', 'Booking marked as active. Entry time recorded.');
+      } else if (res.transition === 'check_out') {
+        Alert.alert('🏁 Checked Out', 'Booking completed. Exit time recorded.');
+      } else if (res.transition === 'already_completed') {
+        Alert.alert('ℹ️ Already Checked Out', 'This booking has already been checked out.');
+      }
     } catch (e) {
       Alert.alert('Lookup Failed', e.response?.data?.message || e.message || 'Could not find booking');
     } finally {
@@ -101,6 +108,8 @@ export default function OwnerScanScreen() {
       booked:          { bg: '#E8F5E9', text: '#2E7D32', label: 'Booked — Awaiting Entry' },
       cancelled:       { bg: '#FCE8E6', text: '#C5221F', label: 'Cancelled' },
       pending_payment: { bg: '#FEF7E0', text: '#B06000', label: 'Pending Payment' },
+      failed:          { bg: '#FCE8E6', text: '#C5221F', label: 'Failed' },
+      incomplete:      { bg: '#FEF7E0', text: '#B06000', label: 'Incomplete' },
     };
     return map[status] || map.pending_payment;
   };
@@ -229,7 +238,7 @@ export default function OwnerScanScreen() {
         <View style={styles.card}>
           <Text style={styles.cardSection}>Booking Reference</Text>
           <Text style={styles.bookingId} numberOfLines={1} ellipsizeMode="middle">
-            {booking._id}
+            {booking.bookingId || booking._id}
           </Text>
         </View>
 

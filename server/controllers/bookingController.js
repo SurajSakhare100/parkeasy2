@@ -59,8 +59,18 @@ export const createBooking = async (req, res) => {
     const durationHours = (end - start) / (1000 * 60 * 60);
     const totalAmount = Math.ceil(durationHours * parking.pricePerHour);
 
+    // Generate unique bookingId
+    let uniqueBookingId;
+    let isUnique = false;
+    while (!isUnique) {
+      uniqueBookingId = 'PE-' + Math.random().toString(36).substring(2, 8).toUpperCase();
+      const existing = await Booking.findOne({ bookingId: uniqueBookingId });
+      if (!existing) isUnique = true;
+    }
+
     const booking = await Booking.create({
       userId,
+      bookingId: uniqueBookingId,
       parkingId,
       vehicleType,
       vehicleNumber,
@@ -210,17 +220,25 @@ export const scanBookingByToken = async (req, res) => {
       return res.status(400).json({ message: "This booking has been cancelled" });
     }
 
+    let transition = "";
     if (booking.status === "booked" && !booking.entryTime) {
       booking.status = "active";
       booking.entryTime = new Date();
       await booking.save();
+      transition = "check_in";
     } else if (booking.status === "active" && !booking.exitTime) {
       booking.status = "completed";
       booking.exitTime = new Date();
       await booking.save();
+      transition = "check_out";
+    } else if (booking.status === "completed") {
+      transition = "already_completed";
     }
 
-    res.status(200).json(booking);
+    res.status(200).json({
+      ...booking.toJSON(),
+      transition
+    });
   } catch (error) {
     console.error("Scan booking error:", error);
     res.status(500).json({ message: "Server error", error: error.message });
@@ -243,49 +261,17 @@ export const getOwnerAnalytics = async (req, res) => {
       }
     });
 
-    const pythonScript = path.join(__dirname, '../scripts/predict.py');
-    const pythonExecutable = path.join(__dirname, '../ml_env/bin/python3');
-    
-    const pythonProcess = spawn(pythonExecutable, [pythonScript]);
-    
-    let aiPredictionData = '';
 
-    pythonProcess.stdout.on('data', (data) => {
-      aiPredictionData += data.toString();
-    });
-
-    pythonProcess.stderr.on('data', (data) => {
-      console.error(`Python stderr: ${data}`);
-    });
-
-    pythonProcess.on('close', (code) => {
-      let aiPrediction;
-      try {
-        aiPrediction = JSON.parse(aiPredictionData);
-      } catch (err) {
-        console.error("Failed to parse python output:", aiPredictionData);
-        // Fallback gracefully
-        aiPrediction = {
-          predictedRevenueNextMonth: totalRevenue * 1.15,
-          suggestedPriceAdjustment: "+5%",
-          peakHours: "10:00 AM - 2:00 PM",
-          predictedOccupancy: "78%",
-          demandTrend: "upward"
-        };
-      }
 
       res.status(200).json({
         totalRevenue,
         totalBookings: bookings.length,
         totalParkings: parkings.length,
         activeSpots: parkings.filter(p => p.isActive).length,
-        aiPrediction
       });
-    });
+    
 
-    // Send the bookings to python stdin
-    pythonProcess.stdin.write(JSON.stringify({ bookings }));
-    pythonProcess.stdin.end();
+    
   } catch (error) {
      console.error("Analytics error:", error);
      res.status(500).json({ message: "Server error", error: error.message });
